@@ -1,0 +1,12 @@
+{
+	"folders": [
+		{
+			"path": "../../../../../Laravel_Learning/Projects/smart-plant-bed"
+		},
+		{
+			"name": "smart-plant-bed-device",
+			"path": ".."
+		}
+	],
+	"settings": {}
+}
