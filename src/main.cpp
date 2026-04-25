@@ -1,18 +1,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
-
-// ===== Wi-Fi config =====
-const char *WIFI_SSID = "Andromeda";
-const char *WIFI_PASSWORD = "W!f!P@55w@rD";
-
-// ===== Laravel API config =====
-// Use your Mac LAN IP, not localhost.
-const char *API_BASE_URL = "http://192.168.0.102:8000";
-
-// From Laravel devices table
-const char *DEVICE_UUID = "1a6168e5-49d5-4e1b-8ff8-287e283d7b03";
-const char *DEVICE_API_KEY = "gyVrsgLLUS86h6BNo8gRrmn2eDxETKtiR1tPgARd";
+#include "secrets.h"
 
 // Backend contract says heartbeat every 10–15 seconds.
 // We will use 15 seconds.
