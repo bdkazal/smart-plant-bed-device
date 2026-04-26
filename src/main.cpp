@@ -4,6 +4,7 @@
 #include "AppConfig.h"
 #include "WiFiMan.h"
 #include "ApiClient.h"
+#include "ValveController.h"
 
 // Backend contract timing
 const unsigned long HEARTBEAT_INTERVAL_MS = 15000;
@@ -11,105 +12,6 @@ const unsigned long COMMAND_POLL_INTERVAL_MS = 5000;
 
 unsigned long lastHeartbeatAt = 0;
 unsigned long lastCommandPollAt = 0;
-
-// Fake valve / watering runtime state.
-// Later this will control a real GPIO relay/MOSFET.
-bool valveOpen = false;
-bool wateringActive = false;
-int activeCommandId = 0;
-unsigned long wateringStartedAt = 0;
-unsigned long wateringDurationMs = 0;
-
-void openFakeValve()
-{
-  valveOpen = true;
-  wateringActive = true;
-
-  Serial.println();
-  Serial.println("FAKE VALVE: OPEN");
-  Serial.println("Watering state: watering");
-}
-
-void closeFakeValve()
-{
-  valveOpen = false;
-  wateringActive = false;
-
-  Serial.println();
-  Serial.println("FAKE VALVE: CLOSED");
-  Serial.println("Watering state: idle");
-}
-
-void startWateringCommand(int commandId, int durationSeconds)
-{
-  if (wateringActive)
-  {
-    Serial.println("Already watering. Ignoring new valve_on for now.");
-    return;
-  }
-
-  if (durationSeconds <= 0)
-  {
-    Serial.println("Invalid duration. Sending failed ack.");
-    sendCommandAck(commandId, "failed", "Invalid duration_seconds");
-    return;
-  }
-
-  activeCommandId = commandId;
-  wateringStartedAt = millis();
-  wateringDurationMs = (unsigned long)durationSeconds * 1000UL;
-
-  openFakeValve();
-
-  bool acknowledged = sendCommandAck(commandId, "acknowledged");
-
-  if (!acknowledged)
-  {
-    Serial.println("Warning: failed to send acknowledged ack. Local watering still started.");
-  }
-
-  Serial.print("Watering duration seconds: ");
-  Serial.println(durationSeconds);
-}
-
-void stopWateringCommand(int commandId)
-{
-  int interruptedCommandId = activeCommandId;
-
-  closeFakeValve();
-
-  if (interruptedCommandId > 0 && interruptedCommandId != commandId)
-  {
-    Serial.println();
-    Serial.print("Closing interrupted valve_on command: ");
-    Serial.println(interruptedCommandId);
-
-    bool previousExecuted = sendCommandAck(interruptedCommandId, "executed");
-
-    if (!previousExecuted)
-    {
-      Serial.println("Warning: failed to mark interrupted valve_on command as executed.");
-    }
-  }
-
-  bool acknowledged = sendCommandAck(commandId, "acknowledged");
-
-  if (!acknowledged)
-  {
-    Serial.println("Warning: failed to send acknowledged ack for valve_off.");
-  }
-
-  bool executed = sendCommandAck(commandId, "executed");
-
-  if (!executed)
-  {
-    Serial.println("Warning: failed to send executed ack for valve_off.");
-  }
-
-  activeCommandId = 0;
-  wateringStartedAt = 0;
-  wateringDurationMs = 0;
-}
 
 void parseCommandResponse(const String &response)
 {
@@ -162,38 +64,6 @@ void parseCommandResponse(const String &response)
   {
     Serial.println("Unknown command type. Sending failed ack.");
     sendCommandAck(commandId, "failed", "Unknown command type");
-  }
-}
-
-void updateWateringState()
-{
-  if (!wateringActive)
-  {
-    return;
-  }
-
-  unsigned long now = millis();
-
-  if (now - wateringStartedAt >= wateringDurationMs)
-  {
-    Serial.println();
-    Serial.println("Watering duration completed.");
-
-    closeFakeValve();
-
-    if (activeCommandId > 0)
-    {
-      bool executed = sendCommandAck(activeCommandId, "executed");
-
-      if (!executed)
-      {
-        Serial.println("Warning: failed to send executed ack.");
-      }
-    }
-
-    activeCommandId = 0;
-    wateringStartedAt = 0;
-    wateringDurationMs = 0;
   }
 }
 
