@@ -1,13 +1,37 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
+#include <ArduinoJson.h>
 #include "secrets.h"
 
-// Backend contract says heartbeat every 10–15 seconds.
-// We will use 15 seconds.
+// Backend contract timing
 const unsigned long HEARTBEAT_INTERVAL_MS = 15000;
 
 unsigned long lastHeartbeatAt = 0;
+
+struct DeviceConfig
+{
+  String deviceName;
+  String timezone;
+  String wateringMode;
+  int soilMoistureThreshold = 0;
+  int maxWateringDurationSeconds = 0;
+  int cooldownMinutes = 0;
+  int localManualDurationSeconds = 0;
+};
+
+DeviceConfig deviceConfig;
+
+bool isWiFiConnected()
+{
+  return WiFi.status() == WL_CONNECTED;
+}
+
+void addDeviceHeaders(HTTPClient &http)
+{
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("X-DEVICE-KEY", DEVICE_API_KEY);
+}
 
 void connectToWiFi()
 {
@@ -21,7 +45,7 @@ void connectToWiFi()
 
   int attempts = 0;
 
-  while (WiFi.status() != WL_CONNECTED && attempts < 30)
+  while (!isWiFiConnected() && attempts < 30)
   {
     delay(500);
     Serial.print(".");
@@ -30,7 +54,7 @@ void connectToWiFi()
 
   Serial.println();
 
-  if (WiFi.status() == WL_CONNECTED)
+  if (isWiFiConnected())
   {
     Serial.println("Wi-Fi connected successfully.");
     Serial.print("ESP32 IP address: ");
@@ -44,9 +68,101 @@ void connectToWiFi()
   }
 }
 
+void printDeviceConfig()
+{
+  Serial.println();
+  Serial.println("Parsed device config:");
+  Serial.print("Device name: ");
+  Serial.println(deviceConfig.deviceName);
+  Serial.print("Timezone: ");
+  Serial.println(deviceConfig.timezone);
+  Serial.print("Watering mode: ");
+  Serial.println(deviceConfig.wateringMode);
+  Serial.print("Soil moisture threshold: ");
+  Serial.println(deviceConfig.soilMoistureThreshold);
+  Serial.print("Max watering duration seconds: ");
+  Serial.println(deviceConfig.maxWateringDurationSeconds);
+  Serial.print("Cooldown minutes: ");
+  Serial.println(deviceConfig.cooldownMinutes);
+  Serial.print("Local manual duration seconds: ");
+  Serial.println(deviceConfig.localManualDurationSeconds);
+}
+
+void parseConfigResponse(const String &response)
+{
+  JsonDocument doc;
+
+  DeserializationError error = deserializeJson(doc, response);
+
+  if (error)
+  {
+    Serial.print("Failed to parse config JSON: ");
+    Serial.println(error.c_str());
+    return;
+  }
+
+  JsonObject config = doc["config"];
+
+  if (config.isNull())
+  {
+    Serial.println("Config JSON does not contain a config object.");
+    return;
+  }
+
+  deviceConfig.deviceName = config["device_name"] | "";
+  deviceConfig.timezone = config["timezone"] | "";
+  deviceConfig.wateringMode = config["watering_mode"] | "";
+  deviceConfig.soilMoistureThreshold = config["soil_moisture_threshold"] | 0;
+  deviceConfig.maxWateringDurationSeconds = config["max_watering_duration_seconds"] | 0;
+  deviceConfig.cooldownMinutes = config["cooldown_minutes"] | 0;
+  deviceConfig.localManualDurationSeconds = config["local_manual_duration_seconds"] | 0;
+
+  printDeviceConfig();
+}
+void fetchConfig()
+{
+  if (!isWiFiConnected())
+  {
+    Serial.println("Cannot fetch config: Wi-Fi is not connected.");
+    return;
+  }
+
+  String url = String(API_BASE_URL) + "/api/device/config?device_uuid=" + DEVICE_UUID;
+
+  HTTPClient http;
+
+  Serial.println();
+  Serial.println("Fetching device config...");
+  Serial.print("URL: ");
+  Serial.println(url);
+
+  http.begin(url);
+  http.addHeader("X-DEVICE-KEY", DEVICE_API_KEY);
+
+  int statusCode = http.GET();
+  String response = http.getString();
+
+  Serial.print("HTTP status: ");
+  Serial.println(statusCode);
+
+  Serial.print("Response: ");
+  Serial.println(response);
+
+  if (statusCode == 200)
+  {
+    parseConfigResponse(response);
+  }
+  else
+  {
+    Serial.println("Config fetch failed. Keeping previous/default config.");
+  }
+
+  http.end();
+}
+
 void sendHeartbeat()
 {
-  if (WiFi.status() != WL_CONNECTED)
+  if (!isWiFiConnected())
   {
     Serial.println("Cannot send heartbeat: Wi-Fi is not connected.");
     return;
@@ -70,8 +186,7 @@ void sendHeartbeat()
   Serial.println(body);
 
   http.begin(url);
-  http.addHeader("Content-Type", "application/json");
-  http.addHeader("X-DEVICE-KEY", DEVICE_API_KEY);
+  addDeviceHeaders(http);
 
   int statusCode = http.POST(body);
   String response = http.getString();
@@ -95,8 +210,9 @@ void setup()
 
   connectToWiFi();
 
-  if (WiFi.status() == WL_CONNECTED)
+  if (isWiFiConnected())
   {
+    fetchConfig();
     sendHeartbeat();
     lastHeartbeatAt = millis();
   }
@@ -104,10 +220,18 @@ void setup()
 
 void loop()
 {
-  if (WiFi.status() != WL_CONNECTED)
+  if (!isWiFiConnected())
   {
     Serial.println("Wi-Fi disconnected. Reconnecting...");
     connectToWiFi();
+
+    if (isWiFiConnected())
+    {
+      Serial.println("Reconnected. Fetching config again...");
+      fetchConfig();
+      sendHeartbeat();
+      lastHeartbeatAt = millis();
+    }
   }
 
   unsigned long now = millis();
