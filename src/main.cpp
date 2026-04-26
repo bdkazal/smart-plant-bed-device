@@ -3,6 +3,7 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include "secrets.h"
+#include "AppConfig.h"
 
 // Backend contract timing
 const unsigned long HEARTBEAT_INTERVAL_MS = 15000;
@@ -18,19 +19,6 @@ bool wateringActive = false;
 int activeCommandId = 0;
 unsigned long wateringStartedAt = 0;
 unsigned long wateringDurationMs = 0;
-
-struct DeviceConfig
-{
-  String deviceName;
-  String timezone;
-  String wateringMode;
-  int soilMoistureThreshold = 0;
-  int maxWateringDurationSeconds = 0;
-  int cooldownMinutes = 0;
-  int localManualDurationSeconds = 0;
-};
-
-DeviceConfig deviceConfig;
 
 bool isWiFiConnected()
 {
@@ -78,58 +66,6 @@ void connectToWiFi()
   }
 }
 
-void printDeviceConfig()
-{
-  Serial.println();
-  Serial.println("Parsed device config:");
-  Serial.print("Device name: ");
-  Serial.println(deviceConfig.deviceName);
-  Serial.print("Timezone: ");
-  Serial.println(deviceConfig.timezone);
-  Serial.print("Watering mode: ");
-  Serial.println(deviceConfig.wateringMode);
-  Serial.print("Soil moisture threshold: ");
-  Serial.println(deviceConfig.soilMoistureThreshold);
-  Serial.print("Max watering duration seconds: ");
-  Serial.println(deviceConfig.maxWateringDurationSeconds);
-  Serial.print("Cooldown minutes: ");
-  Serial.println(deviceConfig.cooldownMinutes);
-  Serial.print("Local manual duration seconds: ");
-  Serial.println(deviceConfig.localManualDurationSeconds);
-}
-
-void parseConfigResponse(const String &response)
-{
-  JsonDocument doc;
-
-  DeserializationError error = deserializeJson(doc, response);
-
-  if (error)
-  {
-    Serial.print("Failed to parse config JSON: ");
-    Serial.println(error.c_str());
-    return;
-  }
-
-  JsonObject config = doc["config"];
-
-  if (config.isNull())
-  {
-    Serial.println("Config JSON does not contain a config object.");
-    return;
-  }
-
-  deviceConfig.deviceName = config["device_name"] | "";
-  deviceConfig.timezone = config["timezone"] | "";
-  deviceConfig.wateringMode = config["watering_mode"] | "";
-  deviceConfig.soilMoistureThreshold = config["soil_moisture_threshold"] | 0;
-  deviceConfig.maxWateringDurationSeconds = config["max_watering_duration_seconds"] | 0;
-  deviceConfig.cooldownMinutes = config["cooldown_minutes"] | 0;
-  deviceConfig.localManualDurationSeconds = config["local_manual_duration_seconds"] | 0;
-
-  printDeviceConfig();
-}
-
 void fetchConfig()
 {
   if (!isWiFiConnected())
@@ -161,7 +97,12 @@ void fetchConfig()
 
   if (statusCode == 200)
   {
-    parseConfigResponse(response);
+    bool parsed = parseConfigResponse(response);
+
+    if (!parsed)
+    {
+      Serial.println("Config response received but parsing failed.");
+    }
   }
   else
   {
