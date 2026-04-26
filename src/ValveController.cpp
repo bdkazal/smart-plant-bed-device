@@ -35,6 +35,8 @@ void openFakeValve()
     Serial.println();
     Serial.println("FAKE VALVE: OPEN");
     Serial.println("Watering state: watering");
+
+    sendDeviceStateSync();
 }
 
 void closeFakeValve()
@@ -45,8 +47,9 @@ void closeFakeValve()
     Serial.println();
     Serial.println("FAKE VALVE: CLOSED");
     Serial.println("Watering state: idle");
-}
 
+    sendDeviceStateSync();
+}
 void startWateringCommand(int commandId, int durationSeconds)
 {
     if (wateringActive)
