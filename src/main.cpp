@@ -317,7 +317,23 @@ void startWateringCommand(int commandId, int durationSeconds)
 
 void stopWateringCommand(int commandId)
 {
+  int interruptedCommandId = activeCommandId;
+
   closeFakeValve();
+
+  if (interruptedCommandId > 0 && interruptedCommandId != commandId)
+  {
+    Serial.println();
+    Serial.print("Closing interrupted valve_on command: ");
+    Serial.println(interruptedCommandId);
+
+    bool previousExecuted = sendCommandAck(interruptedCommandId, "executed");
+
+    if (!previousExecuted)
+    {
+      Serial.println("Warning: failed to mark interrupted valve_on command as executed.");
+    }
+  }
 
   bool acknowledged = sendCommandAck(commandId, "acknowledged");
 
