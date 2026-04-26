@@ -4,6 +4,7 @@
 #include <ArduinoJson.h>
 #include "secrets.h"
 #include "AppConfig.h"
+#include "WiFiMan.h"
 
 // Backend contract timing
 const unsigned long HEARTBEAT_INTERVAL_MS = 15000;
@@ -20,50 +21,10 @@ int activeCommandId = 0;
 unsigned long wateringStartedAt = 0;
 unsigned long wateringDurationMs = 0;
 
-bool isWiFiConnected()
-{
-  return WiFi.status() == WL_CONNECTED;
-}
-
 void addDeviceHeaders(HTTPClient &http)
 {
   http.addHeader("Content-Type", "application/json");
   http.addHeader("X-DEVICE-KEY", DEVICE_API_KEY);
-}
-
-void connectToWiFi()
-{
-  Serial.println();
-  Serial.println("Connecting to Wi-Fi...");
-  Serial.print("SSID: ");
-  Serial.println(WIFI_SSID);
-
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-
-  int attempts = 0;
-
-  while (!isWiFiConnected() && attempts < 30)
-  {
-    delay(500);
-    Serial.print(".");
-    attempts++;
-  }
-
-  Serial.println();
-
-  if (isWiFiConnected())
-  {
-    Serial.println("Wi-Fi connected successfully.");
-    Serial.print("ESP32 IP address: ");
-    Serial.println(WiFi.localIP());
-    Serial.print("Signal strength RSSI: ");
-    Serial.println(WiFi.RSSI());
-  }
-  else
-  {
-    Serial.println("Wi-Fi connection failed.");
-  }
 }
 
 void fetchConfig()
