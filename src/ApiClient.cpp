@@ -5,6 +5,7 @@
 #include "secrets.h"
 #include "WiFiMan.h"
 #include "AppConfig.h"
+#include "CommandHandler.h"
 
 void addDeviceHeaders(HTTPClient &http)
 {
