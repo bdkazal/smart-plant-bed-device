@@ -6,8 +6,10 @@
 
 // Backend contract timing
 const unsigned long HEARTBEAT_INTERVAL_MS = 15000;
+const unsigned long COMMAND_POLL_INTERVAL_MS = 5000;
 
 unsigned long lastHeartbeatAt = 0;
+unsigned long lastCommandPollAt = 0;
 
 struct DeviceConfig
 {
@@ -160,6 +162,99 @@ void fetchConfig()
   http.end();
 }
 
+void parseCommandResponse(const String &response)
+{
+  JsonDocument doc;
+
+  DeserializationError error = deserializeJson(doc, response);
+
+  if (error)
+  {
+    Serial.print("Failed to parse command JSON: ");
+    Serial.println(error.c_str());
+    return;
+  }
+
+  if (doc["command"].isNull())
+  {
+    Serial.println("No pending command.");
+    return;
+  }
+
+  JsonObject command = doc["command"];
+
+  int commandId = command["id"] | 0;
+  String commandType = command["command_type"] | "";
+  String status = command["status"] | "";
+
+  Serial.println();
+  Serial.println("Pending command found:");
+  Serial.print("Command ID: ");
+  Serial.println(commandId);
+  Serial.print("Command type: ");
+  Serial.println(commandType);
+  Serial.print("Status: ");
+  Serial.println(status);
+
+  if (commandType == "valve_on")
+  {
+    int durationSeconds = command["payload"]["duration_seconds"] | 0;
+
+    Serial.print("Duration seconds: ");
+    Serial.println(durationSeconds);
+    Serial.println("Next step later: acknowledge and start fake valve_on.");
+  }
+  else if (commandType == "valve_off")
+  {
+    Serial.println("Next step later: acknowledge and stop fake valve.");
+  }
+  else
+  {
+    Serial.println("Unknown command type. Ignoring for now.");
+  }
+}
+
+void pollCommands()
+{
+  if (!isWiFiConnected())
+  {
+    Serial.println("Cannot poll commands: Wi-Fi is not connected.");
+    return;
+  }
+
+  String url = String(API_BASE_URL) + "/api/device/commands?device_uuid=" + DEVICE_UUID;
+
+  HTTPClient http;
+
+  Serial.println();
+  Serial.println("Polling commands...");
+  Serial.print("URL: ");
+  Serial.println(url);
+
+  http.begin(url);
+  http.addHeader("X-DEVICE-KEY", DEVICE_API_KEY);
+
+  int statusCode = http.GET();
+  String response = http.getString();
+
+  Serial.print("HTTP status: ");
+  Serial.println(statusCode);
+
+  Serial.print("Response: ");
+  Serial.println(response);
+
+  if (statusCode == 200)
+  {
+    parseCommandResponse(response);
+  }
+  else
+  {
+    Serial.println("Command poll failed. Will retry later.");
+  }
+
+  http.end();
+}
+
 void sendHeartbeat()
 {
   if (!isWiFiConnected())
@@ -214,7 +309,10 @@ void setup()
   {
     fetchConfig();
     sendHeartbeat();
+    pollCommands();
+
     lastHeartbeatAt = millis();
+    lastCommandPollAt = millis();
   }
 }
 
@@ -231,6 +329,8 @@ void loop()
       fetchConfig();
       sendHeartbeat();
       lastHeartbeatAt = millis();
+      pollCommands();
+      lastCommandPollAt = millis();
     }
   }
 
@@ -240,5 +340,11 @@ void loop()
   {
     sendHeartbeat();
     lastHeartbeatAt = now;
+  }
+
+  if (now - lastCommandPollAt >= COMMAND_POLL_INTERVAL_MS)
+  {
+    pollCommands();
+    lastCommandPollAt = now;
   }
 }
