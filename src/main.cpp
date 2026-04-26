@@ -25,6 +25,7 @@ void setup()
   {
     fetchConfig();
     sendHeartbeat();
+    sendDeviceStateSync();
     pollCommands();
 
     lastHeartbeatAt = millis();
@@ -44,6 +45,7 @@ void loop()
       Serial.println("Reconnected. Fetching config again...");
       fetchConfig();
       sendHeartbeat();
+      sendDeviceStateSync();
       pollCommands();
 
       lastHeartbeatAt = millis();
