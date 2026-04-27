@@ -15,8 +15,15 @@ StoredDeviceConfig loadStoredDeviceConfig()
 {
     StoredDeviceConfig config;
 
-    config.wifiSsid = preferences.getString("wifi_ssid", "");
-    config.wifiPassword = preferences.getString("wifi_pass", "");
+    if (preferences.isKey("wifi_ssid"))
+    {
+        config.wifiSsid = preferences.getString("wifi_ssid", "");
+    }
+
+    if (preferences.isKey("wifi_pass"))
+    {
+        config.wifiPassword = preferences.getString("wifi_pass", "");
+    }
 
     config.hasWifiCredentials = config.wifiSsid.length() > 0;
 
