@@ -24,7 +24,6 @@ void setup()
   Serial.println("Smart Plant Bed ESP32 starting...");
 
   beginDeviceStorage();
-  loadStoredDeviceConfig();
 
   connectToWiFi();
 
