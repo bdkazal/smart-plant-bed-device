@@ -36,7 +36,7 @@ void openFakeValve()
     Serial.println("FAKE VALVE: OPEN");
     Serial.println("Watering state: watering");
 
-    sendDeviceStateSync();
+    sendDeviceStateSync(0);
 }
 
 void closeFakeValve()
@@ -48,8 +48,9 @@ void closeFakeValve()
     Serial.println("FAKE VALVE: CLOSED");
     Serial.println("Watering state: idle");
 
-    sendDeviceStateSync();
+    sendDeviceStateSync(0);
 }
+
 void startWateringCommand(int commandId, int durationSeconds)
 {
     if (wateringActive)
@@ -96,7 +97,11 @@ void stopWateringCommand(int commandId)
 
         bool previousExecuted = sendCommandAck(interruptedCommandId, "executed");
 
-        if (!previousExecuted)
+        if (previousExecuted)
+        {
+            sendDeviceStateSync(interruptedCommandId);
+        }
+        else
         {
             Serial.println("Warning: failed to mark interrupted valve_on command as executed.");
         }
@@ -111,7 +116,11 @@ void stopWateringCommand(int commandId)
 
     bool executed = sendCommandAck(commandId, "executed");
 
-    if (!executed)
+    if (executed)
+    {
+        sendDeviceStateSync(commandId);
+    }
+    else
     {
         Serial.println("Warning: failed to send executed ack for valve_off.");
     }
@@ -141,7 +150,11 @@ void updateWateringState()
         {
             bool executed = sendCommandAck(activeCommandId, "executed");
 
-            if (!executed)
+            if (executed)
+            {
+                sendDeviceStateSync(activeCommandId);
+            }
+            else
             {
                 Serial.println("Warning: failed to send executed ack.");
             }
