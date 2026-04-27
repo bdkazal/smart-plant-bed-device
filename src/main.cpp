@@ -4,6 +4,7 @@
 #include "ApiClient.h"
 #include "ValveController.h"
 #include "SensorReader.h"
+#include "DeviceStorage.h"
 
 // Backend contract timing
 const unsigned long HEARTBEAT_INTERVAL_MS = 15000;
@@ -21,6 +22,9 @@ void setup()
 
   Serial.println();
   Serial.println("Smart Plant Bed ESP32 starting...");
+
+  beginDeviceStorage();
+  loadStoredDeviceConfig();
 
   connectToWiFi();
 
