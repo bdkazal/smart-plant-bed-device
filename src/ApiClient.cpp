@@ -270,17 +270,14 @@ bool sendSensorReading(const SensorReading &reading)
   body += "\"device_uuid\":\"";
   body += DEVICE_UUID;
   body += "\",";
-  body += "\"soil_moisture_percent\":";
-  body += String(reading.soilMoisturePercent);
-  body += ",";
-  body += "\"water_level_percent\":";
-  body += String(reading.waterLevelPercent);
-  body += ",";
-  body += "\"temperature_c\":";
+  body += "\"temperature\":";
   body += String(reading.temperatureC, 1);
   body += ",";
-  body += "\"humidity_percent\":";
-  body += String(reading.humidityPercent, 1);
+  body += "\"humidity\":";
+  body += String((int)reading.humidityPercent);
+  body += ",";
+  body += "\"soil_moisture\":";
+  body += String(reading.soilMoisturePercent);
   body += "}";
 
   HTTPClient http;
