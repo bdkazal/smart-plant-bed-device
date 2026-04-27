@@ -255,3 +255,55 @@ bool sendDeviceStateSync(int lastCompletedCommandId)
 
   return statusCode >= 200 && statusCode < 300;
 }
+
+bool sendSensorReading(const SensorReading &reading)
+{
+  if (!isWiFiConnected())
+  {
+    Serial.println("Cannot send sensor reading: Wi-Fi is not connected.");
+    return false;
+  }
+
+  String url = String(API_BASE_URL) + "/api/device/readings";
+
+  String body = "{";
+  body += "\"device_uuid\":\"";
+  body += DEVICE_UUID;
+  body += "\",";
+  body += "\"soil_moisture_percent\":";
+  body += String(reading.soilMoisturePercent);
+  body += ",";
+  body += "\"water_level_percent\":";
+  body += String(reading.waterLevelPercent);
+  body += ",";
+  body += "\"temperature_c\":";
+  body += String(reading.temperatureC, 1);
+  body += ",";
+  body += "\"humidity_percent\":";
+  body += String(reading.humidityPercent, 1);
+  body += "}";
+
+  HTTPClient http;
+
+  Serial.println();
+  Serial.println("Sending sensor reading...");
+  Serial.print("URL: ");
+  Serial.println(url);
+  Serial.print("Body: ");
+  Serial.println(body);
+
+  http.begin(url);
+  addDeviceHeaders(http);
+
+  int statusCode = http.POST(body);
+  String response = http.getString();
+
+  Serial.print("HTTP status: ");
+  Serial.println(statusCode);
+  Serial.print("Response: ");
+  Serial.println(response);
+
+  http.end();
+
+  return statusCode >= 200 && statusCode < 300;
+}
