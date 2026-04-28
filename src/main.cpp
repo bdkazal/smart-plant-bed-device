@@ -53,8 +53,7 @@ void setup()
     return;
   }
 
-  connectToWiFi();
-
+  connectToWiFiUsingConfig(storedConfig);
   if (isWiFiConnected())
   {
     runOnlineStartupTasks();

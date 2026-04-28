@@ -52,22 +52,19 @@ bool connectWithCredentials(const String &ssid, const String &password)
     return false;
 }
 
-void connectToWiFi()
+bool connectToWiFiUsingConfig(const StoredDeviceConfig &storedConfig)
 {
-    StoredDeviceConfig storedConfig = loadStoredDeviceConfig();
-
     if (storedConfig.hasWifiCredentials)
     {
         Serial.println("Trying stored Wi-Fi credentials...");
 
         bool connected = connectWithCredentials(
             storedConfig.wifiSsid,
-            storedConfig.wifiPassword
-        );
+            storedConfig.wifiPassword);
 
         if (connected)
         {
-            return;
+            return true;
         }
 
         Serial.println("Stored Wi-Fi failed. Falling back to development secrets.");
@@ -77,5 +74,11 @@ void connectToWiFi()
         Serial.println("No stored Wi-Fi. Using development secrets.");
     }
 
-    connectWithCredentials(WIFI_SSID, WIFI_PASSWORD);
+    return connectWithCredentials(WIFI_SSID, WIFI_PASSWORD);
+}
+
+void connectToWiFi()
+{
+    StoredDeviceConfig storedConfig = loadStoredDeviceConfig();
+    connectToWiFiUsingConfig(storedConfig);
 }
