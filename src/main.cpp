@@ -48,6 +48,8 @@ void setup()
 
   beginDeviceStorage();
 
+  loadPendingCompletedCommandFromStorage();
+
   printDeviceIdentity();
 
   printFirmwareInfo();

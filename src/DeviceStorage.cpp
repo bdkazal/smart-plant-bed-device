@@ -65,3 +65,48 @@ void clearStoredDeviceConfig()
     preferences.clear();
     Serial.println("Stored device config cleared.");
 }
+
+bool savePendingCompletedCommandId(int commandId)
+{
+    if (commandId <= 0)
+    {
+        Serial.println("Cannot save pending completed command: invalid command ID.");
+        return false;
+    }
+
+    preferences.putInt("pending_cmd", commandId);
+
+    Serial.print("Pending completed command saved to flash: ");
+    Serial.println(commandId);
+
+    return true;
+}
+
+int loadPendingCompletedCommandId()
+{
+    if (!preferences.isKey("pending_cmd"))
+    {
+        return 0;
+    }
+
+    int commandId = preferences.getInt("pending_cmd", 0);
+
+    if (commandId > 0)
+    {
+        Serial.print("Pending completed command loaded from flash: ");
+        Serial.println(commandId);
+    }
+
+    return commandId;
+}
+
+void clearPendingCompletedCommandId()
+{
+    if (preferences.isKey("pending_cmd"))
+    {
+        Serial.print("Clearing pending completed command from flash: ");
+        Serial.println(preferences.getInt("pending_cmd", 0));
+
+        preferences.remove("pending_cmd");
+    }
+}

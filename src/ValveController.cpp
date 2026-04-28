@@ -3,6 +3,7 @@
 #include <Arduino.h>
 
 #include "ApiClient.h"
+#include "DeviceStorage.h"
 
 // Fake valve / watering runtime state.
 // Later this will control a real GPIO relay/MOSFET.
@@ -40,6 +41,8 @@ void rememberPendingCompletedCommand(int commandId)
     Serial.println();
     Serial.print("Remembered pending completed command for reconnect sync: ");
     Serial.println(pendingCompletedCommandId);
+
+    savePendingCompletedCommandId(commandId);
 }
 
 bool hasPendingCompletedCommand()
@@ -56,11 +59,24 @@ void clearPendingCompletedCommand()
 {
     if (pendingCompletedCommandId > 0)
     {
-        Serial.print("Clearing pending completed command: ");
+        Serial.print("Clearing pending completed command from RAM: ");
         Serial.println(pendingCompletedCommandId);
     }
 
     pendingCompletedCommandId = 0;
+
+    clearPendingCompletedCommandId();
+}
+
+void loadPendingCompletedCommandFromStorage()
+{
+    pendingCompletedCommandId = loadPendingCompletedCommandId();
+
+    if (pendingCompletedCommandId > 0)
+    {
+        Serial.print("Pending completed command restored into RAM: ");
+        Serial.println(pendingCompletedCommandId);
+    }
 }
 
 bool syncPendingCompletedCommandIfNeeded()

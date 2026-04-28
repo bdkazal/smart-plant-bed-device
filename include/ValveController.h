@@ -13,6 +13,7 @@ bool isWateringActive();
 int getActiveCommandId();
 
 void rememberPendingCompletedCommand(int commandId);
+void loadPendingCompletedCommandFromStorage();
 bool hasPendingCompletedCommand();
 int getPendingCompletedCommandId();
 void clearPendingCompletedCommand();
