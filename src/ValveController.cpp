@@ -35,8 +35,6 @@ void openFakeValve()
     Serial.println();
     Serial.println("FAKE VALVE: OPEN");
     Serial.println("Watering state: watering");
-
-    sendDeviceStateSync(0);
 }
 
 void closeFakeValve()
@@ -47,8 +45,6 @@ void closeFakeValve()
     Serial.println();
     Serial.println("FAKE VALVE: CLOSED");
     Serial.println("Watering state: idle");
-
-    sendDeviceStateSync(0);
 }
 
 void startWateringCommand(int commandId, int durationSeconds)
@@ -72,6 +68,9 @@ void startWateringCommand(int commandId, int durationSeconds)
     wateringDurationMs = (unsigned long)durationSeconds * 1000UL;
 
     openFakeValve();
+
+    // Report the new runtime state once after the valve state changes.
+    sendDeviceStateSync(0);
 
     bool acknowledged = sendCommandAck(commandId, "acknowledged");
 
@@ -118,6 +117,7 @@ void stopWateringCommand(int commandId)
         Serial.println("Warning: failed to send executed ack for valve_off.");
     }
 
+    // Report the final runtime state once after command handling finishes.
     sendDeviceStateSync(commandId);
 
     activeCommandId = 0;
@@ -155,6 +155,7 @@ void updateWateringState()
             Serial.println("Warning: failed to send executed ack. Laravel timeout may mark this command failed.");
         }
 
+        // Report the final runtime state once after the command finishes.
         sendDeviceStateSync(completedCommandId);
     }
 
