@@ -6,7 +6,7 @@
 #include "SensorReader.h"
 #include "DeviceStorage.h"
 #include "SetupPortal.h"
-#include "FactoryReset.h"
+#include "WifiReset.h"
 
 // Backend contract timing
 const unsigned long HEARTBEAT_INTERVAL_MS = 15000;
@@ -45,7 +45,7 @@ void setup()
 
   beginDeviceStorage();
 
-  checkFactoryResetOnBoot();
+  checkWifiResetOnBoot();
 
   StoredDeviceConfig storedConfig = loadStoredDeviceConfig();
 
