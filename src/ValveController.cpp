@@ -3,9 +3,9 @@
 #include <Arduino.h>
 
 #include "ApiClient.h"
+#include "ValveDriver.h"
 
-// Fake valve / watering runtime state.
-// Later this will control a real GPIO relay/MOSFET.
+// Valve / watering runtime state.
 bool valveOpen = false;
 bool wateringActive = false;
 int activeCommandId = 0;
@@ -31,9 +31,10 @@ void openFakeValve()
 {
     valveOpen = true;
     wateringActive = true;
+    setValveDriverOpen(true);
 
     Serial.println();
-    Serial.println("FAKE VALVE: OPEN");
+    Serial.println("VALVE: OPEN");
     Serial.println("Watering state: watering");
 }
 
@@ -41,9 +42,10 @@ void closeFakeValve()
 {
     valveOpen = false;
     wateringActive = false;
+    setValveDriverOpen(false);
 
     Serial.println();
-    Serial.println("FAKE VALVE: CLOSED");
+    Serial.println("VALVE: CLOSED");
     Serial.println("Watering state: idle");
 }
 
