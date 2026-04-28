@@ -2,7 +2,7 @@
 
 #include <HTTPClient.h>
 
-#include "secrets.h"
+#include "DeviceIdentity.h"
 #include "WiFiMan.h"
 #include "AppConfig.h"
 #include "CommandHandler.h"
@@ -11,7 +11,7 @@
 void addDeviceHeaders(HTTPClient &http)
 {
   http.addHeader("Content-Type", "application/json");
-  http.addHeader("X-DEVICE-KEY", DEVICE_API_KEY);
+  http.addHeader("X-DEVICE-KEY", getDeviceApiKey());
 }
 
 void fetchConfig()
@@ -22,8 +22,7 @@ void fetchConfig()
     return;
   }
 
-  String url = String(API_BASE_URL) + "/api/device/config?device_uuid=" + DEVICE_UUID;
-
+  String url = getApiBaseUrl() + "/api/device/config?device_uuid=" + getDeviceUuid();
   HTTPClient http;
 
   Serial.println();
@@ -32,8 +31,7 @@ void fetchConfig()
   Serial.println(url);
 
   http.begin(url);
-  http.addHeader("X-DEVICE-KEY", DEVICE_API_KEY);
-
+  http.addHeader("X-DEVICE-KEY", getDeviceApiKey());
   int statusCode = http.GET();
   String response = http.getString();
 
@@ -68,11 +66,10 @@ void sendHeartbeat()
     return;
   }
 
-  String url = String(API_BASE_URL) + "/api/device/heartbeat";
-
+  String url = getApiBaseUrl() + "/api/device/heartbeat";
   String body = "{";
   body += "\"device_uuid\":\"";
-  body += DEVICE_UUID;
+  body += getDeviceUuid();
   body += "\"";
   body += "}";
 
@@ -108,11 +105,10 @@ bool sendCommandAck(int commandId, const String &status, const String &message)
     return false;
   }
 
-  String url = String(API_BASE_URL) + "/api/device/commands/" + String(commandId) + "/ack";
-
+  String url = getApiBaseUrl() + "/api/device/commands/" + String(commandId) + "/ack";
   String body = "{";
   body += "\"device_uuid\":\"";
-  body += DEVICE_UUID;
+  body += getDeviceUuid();
   body += "\",";
   body += "\"status\":\"";
   body += status;
@@ -160,8 +156,7 @@ void pollCommands()
     return;
   }
 
-  String url = String(API_BASE_URL) + "/api/device/commands?device_uuid=" + DEVICE_UUID;
-
+  String url = getApiBaseUrl() + "/api/device/commands?device_uuid=" + getDeviceUuid();
   HTTPClient http;
 
   Serial.println();
@@ -170,8 +165,7 @@ void pollCommands()
   Serial.println(url);
 
   http.begin(url);
-  http.addHeader("X-DEVICE-KEY", DEVICE_API_KEY);
-
+  http.addHeader("X-DEVICE-KEY", getDeviceApiKey());
   int statusCode = http.GET();
   String response = http.getString();
 
@@ -205,11 +199,10 @@ bool sendDeviceStateSync(int lastCompletedCommandId)
   String valveState = isValveOpen() ? "open" : "closed";
   String wateringState = isWateringActive() ? "watering" : "idle";
 
-  String url = String(API_BASE_URL) + "/api/device/state";
-
+  String url = getApiBaseUrl() + "/api/device/state";
   String body = "{";
   body += "\"device_uuid\":\"";
-  body += DEVICE_UUID;
+  body += getDeviceUuid();
   body += "\",";
   body += "\"device_type\":\"plant_bed_controller\",";
   body += "\"firmware_version\":\"v0.1.0\",";
@@ -264,11 +257,10 @@ bool sendSensorReading(const SensorReading &reading)
     return false;
   }
 
-  String url = String(API_BASE_URL) + "/api/device/readings";
-
+  String url = getApiBaseUrl() + "/api/device/readings";
   String body = "{";
   body += "\"device_uuid\":\"";
-  body += DEVICE_UUID;
+  body += getDeviceUuid();
   body += "\",";
   body += "\"temperature\":";
   body += String(reading.temperatureC, 1);

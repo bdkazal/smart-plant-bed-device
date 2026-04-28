@@ -7,6 +7,7 @@
 #include "DeviceStorage.h"
 #include "SetupPortal.h"
 #include "WifiReset.h"
+#include "DeviceIdentity.h"
 
 // Backend contract timing
 const unsigned long HEARTBEAT_INTERVAL_MS = 15000;
@@ -44,6 +45,8 @@ void setup()
   Serial.println("Smart Plant Bed ESP32 starting...");
 
   beginDeviceStorage();
+
+  printDeviceIdentity();
 
   checkWifiResetOnBoot();
 
