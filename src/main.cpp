@@ -6,6 +6,7 @@
 #include "SensorReader.h"
 #include "DeviceStorage.h"
 #include "SetupPortal.h"
+#include "FactoryReset.h"
 
 // Backend contract timing
 const unsigned long HEARTBEAT_INTERVAL_MS = 15000;
@@ -43,6 +44,8 @@ void setup()
   Serial.println("Smart Plant Bed ESP32 starting...");
 
   beginDeviceStorage();
+
+  checkFactoryResetOnBoot();
 
   StoredDeviceConfig storedConfig = loadStoredDeviceConfig();
 
