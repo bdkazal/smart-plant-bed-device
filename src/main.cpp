@@ -5,6 +5,7 @@
 #include "ValveController.h"
 #include "SensorReader.h"
 #include "DeviceStorage.h"
+#include "SetupPortal.h"
 
 // Backend contract timing
 const unsigned long HEARTBEAT_INTERVAL_MS = 15000;
@@ -14,6 +15,24 @@ const unsigned long READING_INTERVAL_MS = 30000;
 unsigned long lastHeartbeatAt = 0;
 unsigned long lastCommandPollAt = 0;
 unsigned long lastReadingAt = 0;
+
+void runOnlineStartupTasks()
+{
+  fetchConfig();
+
+  sendHeartbeat();
+  sendDeviceStateSync(0);
+  pollCommands();
+
+  SensorReading reading = readSensors();
+  sendSensorReading(reading);
+
+  unsigned long now = millis();
+
+  lastHeartbeatAt = now;
+  lastCommandPollAt = now;
+  lastReadingAt = now;
+}
 
 void setup()
 {
@@ -25,29 +44,31 @@ void setup()
 
   beginDeviceStorage();
 
+  StoredDeviceConfig storedConfig = loadStoredDeviceConfig();
+
+  if (!storedConfig.hasWifiCredentials)
+  {
+    Serial.println("No Wi-Fi saved. Starting setup portal.");
+    startSetupPortal();
+    return;
+  }
+
   connectToWiFi();
 
   if (isWiFiConnected())
   {
-    fetchConfig();
-
-    sendHeartbeat();
-    sendDeviceStateSync(0);
-    pollCommands();
-
-    SensorReading reading = readSensors();
-    sendSensorReading(reading);
-
-    unsigned long now = millis();
-
-    lastHeartbeatAt = now;
-    lastCommandPollAt = now;
-    lastReadingAt = now;
+    runOnlineStartupTasks();
   }
 }
 
 void loop()
 {
+  if (isSetupPortalActive())
+  {
+    handleSetupPortal();
+    return;
+  }
+
   if (!isWiFiConnected())
   {
     Serial.println("Wi-Fi disconnected. Reconnecting...");
@@ -55,22 +76,8 @@ void loop()
 
     if (isWiFiConnected())
     {
-      Serial.println("Reconnected. Fetching config again...");
-
-      fetchConfig();
-
-      sendHeartbeat();
-      sendDeviceStateSync(0);
-      pollCommands();
-
-      SensorReading reading = readSensors();
-      sendSensorReading(reading);
-
-      unsigned long now = millis();
-
-      lastHeartbeatAt = now;
-      lastCommandPollAt = now;
-      lastReadingAt = now;
+      Serial.println("Reconnected. Running online startup tasks...");
+      runOnlineStartupTasks();
     }
   }
 
