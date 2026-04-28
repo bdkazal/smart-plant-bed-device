@@ -7,6 +7,7 @@
 #include "AppConfig.h"
 #include "CommandHandler.h"
 #include "ValveController.h"
+#include "FirmwareInfo.h"
 
 void addDeviceHeaders(HTTPClient &http)
 {
@@ -204,8 +205,12 @@ bool sendDeviceStateSync(int lastCompletedCommandId)
   body += "\"device_uuid\":\"";
   body += getDeviceUuid();
   body += "\",";
-  body += "\"device_type\":\"plant_bed_controller\",";
-  body += "\"firmware_version\":\"v0.1.0\",";
+  body += "\"device_type\":\"";
+  body += getDeviceType();
+  body += "\",";
+  body += "\"firmware_version\":\"";
+  body += getFirmwareVersion();
+  body += "\",";
   body += "\"operation_state\":\"";
   body += operationState;
   body += "\",";

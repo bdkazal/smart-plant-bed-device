@@ -8,6 +8,7 @@
 #include "SetupPortal.h"
 #include "WifiReset.h"
 #include "DeviceIdentity.h"
+#include "FirmwareInfo.h"
 
 // Backend contract timing
 const unsigned long HEARTBEAT_INTERVAL_MS = 15000;
@@ -47,6 +48,8 @@ void setup()
   beginDeviceStorage();
 
   printDeviceIdentity();
+
+  printFirmwareInfo();
 
   checkWifiResetOnBoot();
 
