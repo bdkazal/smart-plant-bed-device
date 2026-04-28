@@ -24,8 +24,8 @@ void runOnlineStartupTasks()
   fetchConfig();
 
   sendHeartbeat();
-  sendDeviceStateSync(0);
   syncPendingCompletedCommandIfNeeded();
+  sendDeviceStateSync(0);
   pollCommands();
 
   SensorReading reading = readSensors();
@@ -98,11 +98,12 @@ void loop()
   {
     sendHeartbeat();
 
-    // If the server was down but Wi-Fi stayed connected,
-    // this gives the device a chance to repair Laravel state
-    // after the server comes back.
-    sendDeviceStateSync(0);
+    sendHeartbeat();
+
+    // If a command completed while Laravel/server was unreachable,
+    // close that command on Laravel first, then send normal state.
     syncPendingCompletedCommandIfNeeded();
+    sendDeviceStateSync(0);
 
     lastHeartbeatAt = now;
   }
