@@ -97,9 +97,6 @@ void loop()
   if (now - lastHeartbeatAt >= HEARTBEAT_INTERVAL_MS)
   {
     sendHeartbeat();
-
-    sendHeartbeat();
-
     // If a command completed while Laravel/server was unreachable,
     // close that command on Laravel first, then send normal state.
     syncPendingCompletedCommandIfNeeded();
