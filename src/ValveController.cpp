@@ -9,6 +9,7 @@
 bool valveOpen = false;
 bool wateringActive = false;
 int activeCommandId = 0;
+int pendingCompletedCommandId = 0;
 unsigned long wateringStartedAt = 0;
 unsigned long wateringDurationMs = 0;
 
@@ -25,6 +26,64 @@ bool isWateringActive()
 int getActiveCommandId()
 {
     return activeCommandId;
+}
+
+void rememberPendingCompletedCommand(int commandId)
+{
+    if (commandId <= 0)
+    {
+        return;
+    }
+
+    pendingCompletedCommandId = commandId;
+
+    Serial.println();
+    Serial.print("Remembered pending completed command for reconnect sync: ");
+    Serial.println(pendingCompletedCommandId);
+}
+
+bool hasPendingCompletedCommand()
+{
+    return pendingCompletedCommandId > 0;
+}
+
+int getPendingCompletedCommandId()
+{
+    return pendingCompletedCommandId;
+}
+
+void clearPendingCompletedCommand()
+{
+    if (pendingCompletedCommandId > 0)
+    {
+        Serial.print("Clearing pending completed command: ");
+        Serial.println(pendingCompletedCommandId);
+    }
+
+    pendingCompletedCommandId = 0;
+}
+
+bool syncPendingCompletedCommandIfNeeded()
+{
+    if (!hasPendingCompletedCommand())
+    {
+        return true;
+    }
+
+    Serial.println();
+    Serial.print("Syncing pending completed command after reconnect: ");
+    Serial.println(pendingCompletedCommandId);
+
+    bool synced = sendDeviceStateSync(pendingCompletedCommandId);
+
+    if (synced)
+    {
+        clearPendingCompletedCommand();
+        return true;
+    }
+
+    Serial.println("Pending completed command sync failed. Will retry later.");
+    return false;
 }
 
 void openFakeValve()
@@ -99,11 +158,17 @@ void stopWateringCommand(int commandId)
 
         if (previousExecuted)
         {
-            sendDeviceStateSync(interruptedCommandId);
+            bool synced = sendDeviceStateSync(interruptedCommandId);
+
+            if (!synced)
+            {
+                rememberPendingCompletedCommand(interruptedCommandId);
+            }
         }
         else
         {
             Serial.println("Warning: failed to mark interrupted valve_on command as executed.");
+            rememberPendingCompletedCommand(interruptedCommandId);
         }
     }
 
@@ -118,11 +183,17 @@ void stopWateringCommand(int commandId)
 
     if (executed)
     {
-        sendDeviceStateSync(commandId);
+        bool synced = sendDeviceStateSync(commandId);
+
+        if (!synced)
+        {
+            rememberPendingCompletedCommand(commandId);
+        }
     }
     else
     {
         Serial.println("Warning: failed to send executed ack for valve_off.");
+        rememberPendingCompletedCommand(commandId);
     }
 
     activeCommandId = 0;
@@ -152,11 +223,17 @@ void updateWateringState()
 
             if (executed)
             {
-                sendDeviceStateSync(activeCommandId);
+                bool synced = sendDeviceStateSync(activeCommandId);
+
+                if (!synced)
+                {
+                    rememberPendingCompletedCommand(activeCommandId);
+                }
             }
             else
             {
                 Serial.println("Warning: failed to send executed ack.");
+                rememberPendingCompletedCommand(activeCommandId);
             }
         }
 
