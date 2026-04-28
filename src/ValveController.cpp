@@ -3,14 +3,12 @@
 #include <Arduino.h>
 
 #include "ApiClient.h"
-#include "DeviceStorage.h"
 
 // Fake valve / watering runtime state.
 // Later this will control a real GPIO relay/MOSFET.
 bool valveOpen = false;
 bool wateringActive = false;
 int activeCommandId = 0;
-int pendingCompletedCommandId = 0;
 unsigned long wateringStartedAt = 0;
 unsigned long wateringDurationMs = 0;
 
@@ -27,79 +25,6 @@ bool isWateringActive()
 int getActiveCommandId()
 {
     return activeCommandId;
-}
-
-void rememberPendingCompletedCommand(int commandId)
-{
-    if (commandId <= 0)
-    {
-        return;
-    }
-
-    pendingCompletedCommandId = commandId;
-
-    Serial.println();
-    Serial.print("Remembered pending completed command for reconnect sync: ");
-    Serial.println(pendingCompletedCommandId);
-
-    savePendingCompletedCommandId(commandId);
-}
-
-bool hasPendingCompletedCommand()
-{
-    return pendingCompletedCommandId > 0;
-}
-
-int getPendingCompletedCommandId()
-{
-    return pendingCompletedCommandId;
-}
-
-void clearPendingCompletedCommand()
-{
-    if (pendingCompletedCommandId > 0)
-    {
-        Serial.print("Clearing pending completed command from RAM: ");
-        Serial.println(pendingCompletedCommandId);
-    }
-
-    pendingCompletedCommandId = 0;
-
-    clearPendingCompletedCommandId();
-}
-
-void loadPendingCompletedCommandFromStorage()
-{
-    pendingCompletedCommandId = loadPendingCompletedCommandId();
-
-    if (pendingCompletedCommandId > 0)
-    {
-        Serial.print("Pending completed command restored into RAM: ");
-        Serial.println(pendingCompletedCommandId);
-    }
-}
-
-bool syncPendingCompletedCommandIfNeeded()
-{
-    if (!hasPendingCompletedCommand())
-    {
-        return true;
-    }
-
-    Serial.println();
-    Serial.print("Syncing pending completed command after reconnect: ");
-    Serial.println(pendingCompletedCommandId);
-
-    bool synced = sendDeviceStateSync(pendingCompletedCommandId);
-
-    if (synced)
-    {
-        clearPendingCompletedCommand();
-        return true;
-    }
-
-    Serial.println("Pending completed command sync failed. Will retry later.");
-    return false;
 }
 
 void openFakeValve()
@@ -130,7 +55,8 @@ void startWateringCommand(int commandId, int durationSeconds)
 {
     if (wateringActive)
     {
-        Serial.println("Already watering. Ignoring new valve_on for now.");
+        Serial.println("Already watering. Ignoring new valve_on command.");
+        sendCommandAck(commandId, "failed", "Device is already watering");
         return;
     }
 
@@ -172,19 +98,9 @@ void stopWateringCommand(int commandId)
 
         bool previousExecuted = sendCommandAck(interruptedCommandId, "executed");
 
-        if (previousExecuted)
-        {
-            bool synced = sendDeviceStateSync(interruptedCommandId);
-
-            if (!synced)
-            {
-                rememberPendingCompletedCommand(interruptedCommandId);
-            }
-        }
-        else
+        if (!previousExecuted)
         {
             Serial.println("Warning: failed to mark interrupted valve_on command as executed.");
-            rememberPendingCompletedCommand(interruptedCommandId);
         }
     }
 
@@ -197,20 +113,12 @@ void stopWateringCommand(int commandId)
 
     bool executed = sendCommandAck(commandId, "executed");
 
-    if (executed)
-    {
-        bool synced = sendDeviceStateSync(commandId);
-
-        if (!synced)
-        {
-            rememberPendingCompletedCommand(commandId);
-        }
-    }
-    else
+    if (!executed)
     {
         Serial.println("Warning: failed to send executed ack for valve_off.");
-        rememberPendingCompletedCommand(commandId);
     }
+
+    sendDeviceStateSync(commandId);
 
     activeCommandId = 0;
     wateringStartedAt = 0;
@@ -226,35 +134,31 @@ void updateWateringState()
 
     unsigned long now = millis();
 
-    if (now - wateringStartedAt >= wateringDurationMs)
+    if (now - wateringStartedAt < wateringDurationMs)
     {
-        Serial.println();
-        Serial.println("Watering duration completed.");
+        return;
+    }
 
-        closeFakeValve();
+    Serial.println();
+    Serial.println("Watering duration completed.");
 
-        if (activeCommandId > 0)
+    int completedCommandId = activeCommandId;
+
+    closeFakeValve();
+
+    if (completedCommandId > 0)
+    {
+        bool executed = sendCommandAck(completedCommandId, "executed");
+
+        if (!executed)
         {
-            bool executed = sendCommandAck(activeCommandId, "executed");
-
-            if (executed)
-            {
-                bool synced = sendDeviceStateSync(activeCommandId);
-
-                if (!synced)
-                {
-                    rememberPendingCompletedCommand(activeCommandId);
-                }
-            }
-            else
-            {
-                Serial.println("Warning: failed to send executed ack.");
-                rememberPendingCompletedCommand(activeCommandId);
-            }
+            Serial.println("Warning: failed to send executed ack. Laravel timeout may mark this command failed.");
         }
 
-        activeCommandId = 0;
-        wateringStartedAt = 0;
-        wateringDurationMs = 0;
+        sendDeviceStateSync(completedCommandId);
     }
+
+    activeCommandId = 0;
+    wateringStartedAt = 0;
+    wateringDurationMs = 0;
 }
