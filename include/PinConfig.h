@@ -34,5 +34,5 @@ static const int SOIL_MOISTURE_PIN = 34;
 //   wet soil / water = lower raw value
 //
 // These defaults are only a starting point.
-static const int SOIL_DRY_RAW = 3200;
-static const int SOIL_WET_RAW = 1300;
+static const int SOIL_DRY_RAW = 2050;
+static const int SOIL_WET_RAW = 1240;
