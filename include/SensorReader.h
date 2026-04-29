@@ -8,4 +8,5 @@ struct SensorReading
     float humidityPercent;
 };
 
+void beginSensorReader();
 SensorReading readSensors();

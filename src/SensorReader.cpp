@@ -1,8 +1,13 @@
 #include "SensorReader.h"
 
 #include <Arduino.h>
+#include <DHT.h>
 
 #include "PinConfig.h"
+
+static const int DHT_TYPE = DHT11;
+
+DHT dht(DHT_SENSOR_PIN, DHT_TYPE);
 
 int clampPercent(int value)
 {
@@ -19,9 +24,20 @@ int clampPercent(int value)
     return value;
 }
 
+void beginSensorReader()
+{
+    dht.begin();
+
+    Serial.println();
+    Serial.println("Sensor reader initialized.");
+    Serial.print("Soil moisture ADC GPIO: ");
+    Serial.println(SOIL_MOISTURE_PIN);
+    Serial.print("DHT11 data GPIO: ");
+    Serial.println(DHT_SENSOR_PIN);
+}
+
 int readSoilMoistureRaw()
 {
-    // Take multiple samples to reduce noisy ADC readings.
     const int sampleCount = 10;
     long total = 0;
 
@@ -36,16 +52,35 @@ int readSoilMoistureRaw()
 
 int convertSoilRawToPercent(int rawValue)
 {
-    // Capacitive sensors usually read:
-    //   higher raw = drier
-    //   lower raw  = wetter
-    //
-    // So we map:
-    //   SOIL_DRY_RAW -> 0%
-    //   SOIL_WET_RAW -> 100%
     int percent = map(rawValue, SOIL_DRY_RAW, SOIL_WET_RAW, 0, 100);
 
     return clampPercent(percent);
+}
+
+float readTemperatureC()
+{
+    float temperature = dht.readTemperature();
+
+    if (isnan(temperature))
+    {
+        Serial.println("Warning: failed to read DHT11 temperature.");
+        return NAN;
+    }
+
+    return temperature;
+}
+
+float readHumidityPercent()
+{
+    float humidity = dht.readHumidity();
+
+    if (isnan(humidity))
+    {
+        Serial.println("Warning: failed to read DHT11 humidity.");
+        return NAN;
+    }
+
+    return humidity;
 }
 
 SensorReading readSensors()
@@ -56,10 +91,13 @@ SensorReading readSensors()
 
     reading.soilMoisturePercent = convertSoilRawToPercent(soilRaw);
 
-    // Temperature/humidity are still fake for now.
-    // Later we will replace them with DHT/SHT sensor readings.
-    reading.temperatureC = random(240, 321) / 10.0;
-    reading.humidityPercent = random(450, 801) / 10.0;
+    float temperature = readTemperatureC();
+    float humidity = readHumidityPercent();
+
+    // If DHT11 fails, keep values as 0 for now.
+    // Later we can improve ApiClient to send null values.
+    reading.temperatureC = isnan(temperature) ? 0.0 : temperature;
+    reading.humidityPercent = isnan(humidity) ? 0.0 : humidity;
 
     Serial.println();
     Serial.println("Sensor reading:");

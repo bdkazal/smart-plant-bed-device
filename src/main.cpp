@@ -54,10 +54,9 @@ void setup()
   beginDeviceStorage();
 
   beginValveDriver();
-
   beginStatusLed();
-
   beginManualButton();
+  beginSensorReader();
 
   printDeviceIdentity();
   printFirmwareInfo();
