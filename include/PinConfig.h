@@ -45,5 +45,5 @@ static const int SOIL_WET_RAW = 1240;
 //   pressed     = LOW
 static const int MANUAL_WATER_BUTTON_PIN = 25;
 
-// GPIO33 is used for DHT11 temperature/humidity sensor data.
-static const int DHT_SENSOR_PIN = 33;
+// GPIO32 is used for DHT11 temperature/humidity sensor data.
+static const int DHT_SENSOR_PIN = 32;
