@@ -15,10 +15,12 @@
 const unsigned long HEARTBEAT_INTERVAL_MS = 15000;
 const unsigned long COMMAND_POLL_INTERVAL_MS = 5000;
 const unsigned long READING_INTERVAL_MS = 30000;
+const unsigned long CONFIG_REFRESH_INTERVAL_MS = 60000;
 
 unsigned long lastHeartbeatAt = 0;
 unsigned long lastCommandPollAt = 0;
 unsigned long lastReadingAt = 0;
+unsigned long lastConfigRefreshAt = 0;
 
 void runOnlineStartupTasks()
 {
@@ -36,6 +38,7 @@ void runOnlineStartupTasks()
   lastHeartbeatAt = now;
   lastCommandPollAt = now;
   lastReadingAt = now;
+  lastConfigRefreshAt = now;
 }
 
 void setup()
@@ -115,5 +118,13 @@ void loop()
     SensorReading reading = readSensors();
     sendSensorReading(reading);
     lastReadingAt = now;
+  }
+
+  if (now - lastConfigRefreshAt >= CONFIG_REFRESH_INTERVAL_MS)
+  {
+    Serial.println();
+    Serial.println("Refreshing device config...");
+    fetchConfig();
+    lastConfigRefreshAt = now;
   }
 }
