@@ -171,7 +171,9 @@ void stopLocalWatering()
     }
 
     Serial.println();
-    Serial.println("Stopping local watering from physical button.");
+    Serial.println("Stopping watering from physical button.");
+
+    int stoppedCommandId = activeCommandId;
 
     closeFakeValve();
 
@@ -179,6 +181,23 @@ void stopLocalWatering()
     wateringStartedAt = 0;
     wateringDurationMs = 0;
 
+    if (stoppedCommandId > 0)
+    {
+        Serial.print("Physical button stopped Laravel command: ");
+        Serial.println(stoppedCommandId);
+
+        bool executed = sendCommandAck(stoppedCommandId, "executed");
+
+        if (!executed)
+        {
+            Serial.println("Warning: failed to mark stopped Laravel command as executed.");
+        }
+
+        sendDeviceStateSync(stoppedCommandId);
+        return;
+    }
+
+    // Local physical-button watering had no Laravel command ID.
     sendDeviceStateSync(0);
 }
 
