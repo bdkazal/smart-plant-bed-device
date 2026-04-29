@@ -11,6 +11,7 @@
 #include "FirmwareInfo.h"
 #include "ValveDriver.h"
 #include "StatusLed.h"
+#include "ManualButton.h"
 
 // Backend contract timing
 const unsigned long HEARTBEAT_INTERVAL_MS = 15000;
@@ -56,6 +57,8 @@ void setup()
 
   beginStatusLed();
 
+  beginManualButton();
+
   printDeviceIdentity();
   printFirmwareInfo();
 
@@ -87,6 +90,8 @@ void loop()
     handleSetupPortal();
     return;
   }
+
+  updateManualButton();
 
   if (!isWiFiConnected())
   {

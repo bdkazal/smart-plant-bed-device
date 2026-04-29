@@ -8,7 +8,11 @@
 // Valve / watering runtime state.
 bool valveOpen = false;
 bool wateringActive = false;
+
+// Laravel command ID.
+// 0 means local/manual physical-button watering, not server command watering.
 int activeCommandId = 0;
+
 unsigned long wateringStartedAt = 0;
 unsigned long wateringDurationMs = 0;
 
@@ -127,6 +131,57 @@ void stopWateringCommand(int commandId)
     wateringDurationMs = 0;
 }
 
+void startLocalWatering(int durationSeconds)
+{
+    if (wateringActive)
+    {
+        Serial.println("Local watering request ignored: already watering.");
+        return;
+    }
+
+    if (durationSeconds <= 0)
+    {
+        Serial.println("Local watering request ignored: invalid duration.");
+        return;
+    }
+
+    Serial.println();
+    Serial.println("Starting local manual watering from physical button.");
+
+    activeCommandId = 0;
+    wateringStartedAt = millis();
+    wateringDurationMs = (unsigned long)durationSeconds * 1000UL;
+
+    openFakeValve();
+
+    // Local button watering has no Laravel command ID.
+    // We still sync state so dashboard can show watering/open.
+    sendDeviceStateSync(0);
+
+    Serial.print("Local watering duration seconds: ");
+    Serial.println(durationSeconds);
+}
+
+void stopLocalWatering()
+{
+    if (!wateringActive)
+    {
+        Serial.println("Local stop ignored: device is not watering.");
+        return;
+    }
+
+    Serial.println();
+    Serial.println("Stopping local watering from physical button.");
+
+    closeFakeValve();
+
+    activeCommandId = 0;
+    wateringStartedAt = 0;
+    wateringDurationMs = 0;
+
+    sendDeviceStateSync(0);
+}
+
 void updateWateringState()
 {
     if (!wateringActive)
@@ -159,6 +214,11 @@ void updateWateringState()
 
         // Report the final runtime state once after the command finishes.
         sendDeviceStateSync(completedCommandId);
+    }
+    else
+    {
+        // Local physical-button watering completed.
+        sendDeviceStateSync(0);
     }
 
     activeCommandId = 0;

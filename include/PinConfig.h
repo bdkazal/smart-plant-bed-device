@@ -26,13 +26,21 @@ static const bool WIFI_STATUS_LED_ACTIVE_LOW = false;
 // ADC1 pins are preferred for analog sensors while Wi-Fi is active.
 static const int SOIL_MOISTURE_PIN = 34;
 
-// Temporary calibration values.
-// You MUST adjust these after checking your real sensor readings.
+// Calibration from your capacitive soil moisture sensor test:
 //
-// Usually:
-//   dry soil / air  = higher raw value
-//   wet soil / water = lower raw value
+// Air raw: around 3076
+// Dry soil raw: around 1832–2041
+// Wet soil raw: around 1238–1270
 //
-// These defaults are only a starting point.
+// We calibrate using soil values, not air value.
 static const int SOIL_DRY_RAW = 2050;
 static const int SOIL_WET_RAW = 1240;
+
+// GPIO25 is used for local manual watering button.
+// Wiring:
+//   GPIO25 ---- button ---- GND
+//
+// Internal pull-up is used:
+//   not pressed = HIGH
+//   pressed     = LOW
+static const int MANUAL_WATER_BUTTON_PIN = 25;
