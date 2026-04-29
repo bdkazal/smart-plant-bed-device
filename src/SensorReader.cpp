@@ -50,18 +50,37 @@ int readSoilMoistureRaw()
     return total / sampleCount;
 }
 
-bool isSoilSensorAvailable(int rawValue)
-{
-    // If the raw value is close to your air/disconnected range,
-    // do not treat it as valid soil moisture.
-    return rawValue < SOIL_SENSOR_UNAVAILABLE_RAW;
-}
-
 int convertSoilRawToPercent(int rawValue)
 {
     int percent = map(rawValue, SOIL_DRY_RAW, SOIL_WET_RAW, 0, 100);
 
     return clampPercent(percent);
+}
+
+float readTemperatureC()
+{
+    float temperature = dht.readTemperature();
+
+    if (isnan(temperature))
+    {
+        Serial.println("Warning: failed to read DHT11 temperature.");
+        return NAN;
+    }
+
+    return temperature;
+}
+
+float readHumidityPercent()
+{
+    float humidity = dht.readHumidity();
+
+    if (isnan(humidity))
+    {
+        Serial.println("Warning: failed to read DHT11 humidity.");
+        return NAN;
+    }
+
+    return humidity;
 }
 
 SensorReading readSensors()
@@ -70,64 +89,26 @@ SensorReading readSensors()
 
     int soilRaw = readSoilMoistureRaw();
 
-    reading.soilMoistureRaw = soilRaw;
-    reading.hasSoilMoisture = isSoilSensorAvailable(soilRaw);
+    reading.soilMoisturePercent = convertSoilRawToPercent(soilRaw);
 
-    if (reading.hasSoilMoisture)
-    {
-        reading.soilMoisturePercent = convertSoilRawToPercent(soilRaw);
-    }
+    float temperature = readTemperatureC();
+    float humidity = readHumidityPercent();
 
-    float temperature = dht.readTemperature();
-    float humidity = dht.readHumidity();
-
-    reading.hasTemperature = !isnan(temperature);
-    reading.hasHumidity = !isnan(humidity);
-
-    if (reading.hasTemperature)
-    {
-        reading.temperatureC = temperature;
-    }
-
-    if (reading.hasHumidity)
-    {
-        reading.humidityPercent = humidity;
-    }
+    // If DHT11 fails, keep values as 0 for now.
+    // Later we can improve ApiClient to send null values.
+    reading.temperatureC = isnan(temperature) ? 0.0 : temperature;
+    reading.humidityPercent = isnan(humidity) ? 0.0 : humidity;
 
     Serial.println();
     Serial.println("Sensor reading:");
     Serial.print("Soil moisture raw: ");
     Serial.println(soilRaw);
-
-    if (reading.hasSoilMoisture)
-    {
-        Serial.print("Soil moisture %: ");
-        Serial.println(reading.soilMoisturePercent);
-    }
-    else
-    {
-        Serial.println("Soil moisture: unavailable");
-    }
-
-    if (reading.hasTemperature)
-    {
-        Serial.print("Temperature C: ");
-        Serial.println(reading.temperatureC);
-    }
-    else
-    {
-        Serial.println("Temperature C: unavailable");
-    }
-
-    if (reading.hasHumidity)
-    {
-        Serial.print("Humidity %: ");
-        Serial.println(reading.humidityPercent);
-    }
-    else
-    {
-        Serial.println("Humidity %: unavailable");
-    }
+    Serial.print("Soil moisture %: ");
+    Serial.println(reading.soilMoisturePercent);
+    Serial.print("Temperature C: ");
+    Serial.println(reading.temperatureC);
+    Serial.print("Humidity %: ");
+    Serial.println(reading.humidityPercent);
 
     return reading;
 }
