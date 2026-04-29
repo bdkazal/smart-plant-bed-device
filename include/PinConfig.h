@@ -36,6 +36,16 @@ static const int SOIL_MOISTURE_PIN = 34;
 static const int SOIL_DRY_RAW = 2050;
 static const int SOIL_WET_RAW = 1240;
 
+// Sensor disconnect detection.
+// With your current sensor readings:
+//   air raw is around 3076
+//   dry soil raw is around 1832–2041
+//   wet soil raw is around 1238–1270
+//
+// If raw is much higher than real soil range, we treat the probe as not in soil
+// or disconnected/unavailable.
+static const int SOIL_SENSOR_UNAVAILABLE_RAW = 2800;
+
 // GPIO25 is used for local manual watering button.
 // Wiring:
 //   GPIO25 ---- button ---- GND
