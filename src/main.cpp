@@ -10,6 +10,7 @@
 #include "DeviceIdentity.h"
 #include "FirmwareInfo.h"
 #include "ValveDriver.h"
+#include "StatusLed.h"
 
 // Backend contract timing
 const unsigned long HEARTBEAT_INTERVAL_MS = 15000;
@@ -53,6 +54,8 @@ void setup()
 
   beginValveDriver();
 
+  beginStatusLed();
+
   printDeviceIdentity();
   printFirmwareInfo();
 
@@ -71,6 +74,7 @@ void setup()
 
   if (isWiFiConnected())
   {
+    setWifiStatusLedConnected();
     runOnlineStartupTasks();
   }
 }
@@ -79,20 +83,29 @@ void loop()
 {
   if (isSetupPortalActive())
   {
+    updateWifiStatusLedDisconnected();
     handleSetupPortal();
     return;
   }
 
   if (!isWiFiConnected())
   {
+    updateWifiStatusLedDisconnected();
+
     Serial.println("Wi-Fi disconnected. Reconnecting...");
     connectToWiFi();
 
     if (isWiFiConnected())
     {
+      setWifiStatusLedConnected();
+
       Serial.println("Reconnected. Running online startup tasks...");
       runOnlineStartupTasks();
     }
+  }
+  else
+  {
+    setWifiStatusLedConnected();
   }
 
   updateWateringState();

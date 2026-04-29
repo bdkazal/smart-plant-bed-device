@@ -15,3 +15,9 @@ static const int VALVE_CONTROL_PIN = 26;
 //   HIGH = valve/LED ON
 //   LOW  = valve/LED OFF
 static const bool VALVE_ACTIVE_LOW = false;
+
+// GPIO27 is used for Wi-Fi status LED.
+// Connected = solid ON.
+// Not connected / setup mode = blinking.
+static const int WIFI_STATUS_LED_PIN = 27;
+static const bool WIFI_STATUS_LED_ACTIVE_LOW = false;
