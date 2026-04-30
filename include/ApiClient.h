@@ -14,3 +14,6 @@ void pollCommands();
 bool sendDeviceStateSync(int lastCompletedCommandId = 0);
 
 bool sendSensorReading(const SensorReading &reading);
+
+bool isServerRecentlyReachable();
+unsigned long getLastServerSuccessAt();

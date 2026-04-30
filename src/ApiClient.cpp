@@ -9,6 +9,48 @@
 #include "ValveController.h"
 #include "FirmwareInfo.h"
 
+static const unsigned long SERVER_REACHABLE_WINDOW_MS = 45000;
+
+bool serverReachable = false;
+unsigned long lastServerSuccessAt = 0;
+
+void markServerResult(int statusCode)
+{
+  if (statusCode >= 200 && statusCode < 300)
+  {
+    serverReachable = true;
+    lastServerSuccessAt = millis();
+    return;
+  }
+
+  serverReachable = false;
+}
+
+void markServerUnavailable()
+{
+  serverReachable = false;
+}
+
+bool isServerRecentlyReachable()
+{
+  if (!isWiFiConnected())
+  {
+    return false;
+  }
+
+  if (!serverReachable)
+  {
+    return false;
+  }
+
+  return millis() - lastServerSuccessAt <= SERVER_REACHABLE_WINDOW_MS;
+}
+
+unsigned long getLastServerSuccessAt()
+{
+  return lastServerSuccessAt;
+}
+
 void addDeviceHeaders(HTTPClient &http)
 {
   http.addHeader("Content-Type", "application/json");
@@ -19,6 +61,7 @@ void fetchConfig()
 {
   if (!isWiFiConnected())
   {
+    markServerUnavailable();
     Serial.println("Cannot fetch config: Wi-Fi is not connected.");
     return;
   }
@@ -33,8 +76,11 @@ void fetchConfig()
 
   http.begin(url);
   http.addHeader("X-DEVICE-KEY", getDeviceApiKey());
+
   int statusCode = http.GET();
   String response = http.getString();
+
+  markServerResult(statusCode);
 
   Serial.print("HTTP status: ");
   Serial.println(statusCode);
@@ -63,11 +109,13 @@ void sendHeartbeat()
 {
   if (!isWiFiConnected())
   {
+    markServerUnavailable();
     Serial.println("Cannot send heartbeat: Wi-Fi is not connected.");
     return;
   }
 
   String url = getApiBaseUrl() + "/api/device/heartbeat";
+
   String body = "{";
   body += "\"device_uuid\":\"";
   body += getDeviceUuid();
@@ -89,6 +137,8 @@ void sendHeartbeat()
   int statusCode = http.POST(body);
   String response = http.getString();
 
+  markServerResult(statusCode);
+
   Serial.print("HTTP status: ");
   Serial.println(statusCode);
 
@@ -102,11 +152,13 @@ bool sendCommandAck(int commandId, const String &status, const String &message)
 {
   if (!isWiFiConnected())
   {
+    markServerUnavailable();
     Serial.println("Cannot send command ack: Wi-Fi is not connected.");
     return false;
   }
 
   String url = getApiBaseUrl() + "/api/device/commands/" + String(commandId) + "/ack";
+
   String body = "{";
   body += "\"device_uuid\":\"";
   body += getDeviceUuid();
@@ -139,6 +191,8 @@ bool sendCommandAck(int commandId, const String &status, const String &message)
   int statusCode = http.POST(body);
   String response = http.getString();
 
+  markServerResult(statusCode);
+
   Serial.print("HTTP status: ");
   Serial.println(statusCode);
   Serial.print("Response: ");
@@ -153,6 +207,7 @@ void pollCommands()
 {
   if (!isWiFiConnected())
   {
+    markServerUnavailable();
     Serial.println("Cannot poll commands: Wi-Fi is not connected.");
     return;
   }
@@ -167,8 +222,11 @@ void pollCommands()
 
   http.begin(url);
   http.addHeader("X-DEVICE-KEY", getDeviceApiKey());
+
   int statusCode = http.GET();
   String response = http.getString();
+
+  markServerResult(statusCode);
 
   Serial.print("HTTP status: ");
   Serial.println(statusCode);
@@ -192,6 +250,7 @@ bool sendDeviceStateSync(int lastCompletedCommandId)
 {
   if (!isWiFiConnected())
   {
+    markServerUnavailable();
     Serial.println("Cannot sync device state: Wi-Fi is not connected.");
     return false;
   }
@@ -201,6 +260,7 @@ bool sendDeviceStateSync(int lastCompletedCommandId)
   String wateringState = isWateringActive() ? "watering" : "idle";
 
   String url = getApiBaseUrl() + "/api/device/state";
+
   String body = "{";
   body += "\"device_uuid\":\"";
   body += getDeviceUuid();
@@ -244,6 +304,8 @@ bool sendDeviceStateSync(int lastCompletedCommandId)
   int statusCode = http.POST(body);
   String response = http.getString();
 
+  markServerResult(statusCode);
+
   Serial.print("HTTP status: ");
   Serial.println(statusCode);
   Serial.print("Response: ");
@@ -258,6 +320,7 @@ bool sendSensorReading(const SensorReading &reading)
 {
   if (!isWiFiConnected())
   {
+    markServerUnavailable();
     Serial.println("Cannot send sensor reading: Wi-Fi is not connected.");
     return false;
   }
@@ -317,6 +380,8 @@ bool sendSensorReading(const SensorReading &reading)
 
   int statusCode = http.POST(body);
   String response = http.getString();
+
+  markServerResult(statusCode);
 
   Serial.print("HTTP status: ");
   Serial.println(statusCode);

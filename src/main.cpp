@@ -121,6 +121,9 @@ void loop()
     sendHeartbeat();
     sendDeviceStateSync(0);
 
+    Serial.print("Laravel reachable recently: ");
+    Serial.println(isServerRecentlyReachable() ? "yes" : "no");
+
     lastHeartbeatAt = now;
   }
 
