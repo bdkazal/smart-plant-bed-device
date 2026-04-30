@@ -263,18 +263,44 @@ bool sendSensorReading(const SensorReading &reading)
   }
 
   String url = getApiBaseUrl() + "/api/device/readings";
+
   String body = "{";
   body += "\"device_uuid\":\"";
   body += getDeviceUuid();
   body += "\",";
+
   body += "\"temperature\":";
-  body += String(reading.temperatureC, 1);
+  if (reading.hasTemperature)
+  {
+    body += String(reading.temperatureC, 1);
+  }
+  else
+  {
+    body += "null";
+  }
+
   body += ",";
   body += "\"humidity\":";
-  body += String((int)reading.humidityPercent);
+  if (reading.hasHumidity)
+  {
+    body += String((int)reading.humidityPercent);
+  }
+  else
+  {
+    body += "null";
+  }
+
   body += ",";
   body += "\"soil_moisture\":";
-  body += String(reading.soilMoisturePercent);
+  if (reading.hasSoilMoisture)
+  {
+    body += String(reading.soilMoisturePercent);
+  }
+  else
+  {
+    body += "null";
+  }
+
   body += "}";
 
   HTTPClient http;
