@@ -28,13 +28,25 @@ static const int SOIL_MOISTURE_PIN = 34;
 
 // Calibration from your capacitive soil moisture sensor test:
 //
+// Without Resistor:
 // Air raw: around 3076
 // Dry soil raw: around 1832–2041
 // Wet soil raw: around 1238–1270
 //
+// Calibration after adding 100k pulldown resistor:
+//
+// Disconnected sensor raw: 0
+// Air raw: around 2100–2222
+// Dry soil raw: around 1382–1535
+// Wet soil raw: around 995–1021
+//
 // We calibrate using soil values, not air value.
-static const int SOIL_DRY_RAW = 2050;
-static const int SOIL_WET_RAW = 1240;
+static const int SOIL_DRY_RAW = 1550;
+static const int SOIL_WET_RAW = 1000;
+
+// If raw is below this threshold, treat soil sensor as disconnected
+// and send soil_moisture:null to Laravel.
+static const int SOIL_DISCONNECTED_RAW_MAX = 800;
 
 // GPIO25 is used for local manual watering button.
 // Wiring:
