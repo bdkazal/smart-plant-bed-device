@@ -5,12 +5,31 @@
 
 #include "WiFiMan.h"
 
-// Bangladesh timezone: UTC+6, no daylight saving.
-// Later we can map Laravel timezone strings dynamically.
-static const long GMT_OFFSET_SECONDS = 6 * 60 * 60;
-static const int DAYLIGHT_OFFSET_SECONDS = 0;
-
 static bool timeReady = false;
+static String activeTimezoneName = "Asia/Dhaka";
+
+const char *getPosixTimezoneForName(const String &timezoneName)
+{
+    // POSIX TZ format note:
+    // For UTC+6, POSIX uses GMT-6.
+    // For UTC-5, POSIX uses EST5.
+    // This is confusing, but it is how the C time library expects it.
+
+    if (timezoneName == "Asia/Dhaka")
+    {
+        return "GMT-6";
+    }
+
+    if (timezoneName == "UTC" || timezoneName == "Etc/UTC")
+    {
+        return "UTC0";
+    }
+
+    // V1 fallback.
+    // Your current Laravel device timezone is Asia/Dhaka.
+    // Add more mappings later if the product supports other countries.
+    return "GMT-6";
+}
 
 void beginTimeSync()
 {
@@ -18,7 +37,7 @@ void beginTimeSync()
     Serial.println("Time sync initialized.");
 }
 
-void syncTimeFromNtp()
+void syncTimeFromNtp(const String &timezoneName)
 {
     if (!isWiFiConnected())
     {
@@ -27,12 +46,18 @@ void syncTimeFromNtp()
         return;
     }
 
+    activeTimezoneName = timezoneName.length() > 0 ? timezoneName : "Asia/Dhaka";
+    const char *posixTimezone = getPosixTimezoneForName(activeTimezoneName);
+
     Serial.println();
     Serial.println("Syncing time from NTP...");
+    Serial.print("Config timezone: ");
+    Serial.println(activeTimezoneName);
+    Serial.print("POSIX timezone: ");
+    Serial.println(posixTimezone);
 
-    configTime(
-        GMT_OFFSET_SECONDS,
-        DAYLIGHT_OFFSET_SECONDS,
+    configTzTime(
+        posixTimezone,
         "pool.ntp.org",
         "time.nist.gov"
     );
