@@ -16,4 +16,8 @@ StoredDeviceConfig loadStoredDeviceConfig();
 
 bool saveWifiCredentials(const String &ssid, const String &password);
 
+String loadCachedConfigJson();
+bool hasCachedConfigJson();
+bool saveCachedConfigJsonIfChanged(const String &configJson);
+
 void clearStoredDeviceConfig();
