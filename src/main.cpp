@@ -13,6 +13,7 @@
 #include "StatusLed.h"
 #include "ManualButton.h"
 #include "AppConfig.h"
+#include "TimeSync.h"
 
 // Backend contract timing
 const unsigned long HEARTBEAT_INTERVAL_MS = 15000;
@@ -52,6 +53,7 @@ void loadCachedLaravelConfigIfAvailable()
 void runOnlineStartupTasks()
 {
   fetchConfig();
+  syncTimeFromNtp();
 
   sendHeartbeat();
   sendDeviceStateSync(0);
@@ -82,6 +84,7 @@ void setup()
   beginStatusLed();
   beginManualButton();
   beginSensorReader();
+  beginTimeSync();
 
   printDeviceIdentity();
   printFirmwareInfo();
