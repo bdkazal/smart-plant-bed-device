@@ -6,6 +6,10 @@ Preferences preferences;
 
 static const char *NAMESPACE = "plantbed";
 
+static const char *KEY_WIFI_SSID = "wifi_ssid";
+static const char *KEY_WIFI_PASS = "wifi_pass";
+static const char *KEY_CONFIG_JSON = "cfg_json";
+
 void beginDeviceStorage()
 {
     preferences.begin(NAMESPACE, false);
@@ -15,14 +19,14 @@ StoredDeviceConfig loadStoredDeviceConfig()
 {
     StoredDeviceConfig config;
 
-    if (preferences.isKey("wifi_ssid"))
+    if (preferences.isKey(KEY_WIFI_SSID))
     {
-        config.wifiSsid = preferences.getString("wifi_ssid", "");
+        config.wifiSsid = preferences.getString(KEY_WIFI_SSID, "");
     }
 
-    if (preferences.isKey("wifi_pass"))
+    if (preferences.isKey(KEY_WIFI_PASS))
     {
-        config.wifiPassword = preferences.getString("wifi_pass", "");
+        config.wifiPassword = preferences.getString(KEY_WIFI_PASS, "");
     }
 
     config.hasWifiCredentials = config.wifiSsid.length() > 0;
@@ -52,10 +56,48 @@ bool saveWifiCredentials(const String &ssid, const String &password)
         return false;
     }
 
-    preferences.putString("wifi_ssid", ssid);
-    preferences.putString("wifi_pass", password);
+    preferences.putString(KEY_WIFI_SSID, ssid);
+    preferences.putString(KEY_WIFI_PASS, password);
 
     Serial.println("Wi-Fi credentials saved to flash.");
+
+    return true;
+}
+
+String loadCachedConfigJson()
+{
+    if (!preferences.isKey(KEY_CONFIG_JSON))
+    {
+        return "";
+    }
+
+    return preferences.getString(KEY_CONFIG_JSON, "");
+}
+
+bool hasCachedConfigJson()
+{
+    return loadCachedConfigJson().length() > 0;
+}
+
+bool saveCachedConfigJsonIfChanged(const String &configJson)
+{
+    if (configJson.length() == 0)
+    {
+        Serial.println("Cannot cache config: JSON is empty.");
+        return false;
+    }
+
+    String existingConfigJson = loadCachedConfigJson();
+
+    if (existingConfigJson == configJson)
+    {
+        Serial.println("Config cache unchanged. Flash write skipped.");
+        return false;
+    }
+
+    preferences.putString(KEY_CONFIG_JSON, configJson);
+
+    Serial.println("Config cache saved to flash.");
 
     return true;
 }
