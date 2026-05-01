@@ -12,6 +12,7 @@
 #include "ValveDriver.h"
 #include "StatusLed.h"
 #include "ManualButton.h"
+#include "AppConfig.h"
 
 // Backend contract timing
 const unsigned long HEARTBEAT_INTERVAL_MS = 15000;
@@ -23,6 +24,30 @@ unsigned long lastHeartbeatAt = 0;
 unsigned long lastCommandPollAt = 0;
 unsigned long lastReadingAt = 0;
 unsigned long lastConfigRefreshAt = 0;
+
+void loadCachedLaravelConfigIfAvailable()
+{
+  String cachedConfigJson = loadCachedConfigJson();
+
+  if (cachedConfigJson.length() == 0)
+  {
+    Serial.println("No cached Laravel config found.");
+    return;
+  }
+
+  Serial.println();
+  Serial.println("Loading cached Laravel config from flash...");
+
+  bool parsed = parseConfigObjectJson(cachedConfigJson);
+
+  if (!parsed)
+  {
+    Serial.println("Cached Laravel config exists but could not be parsed.");
+    return;
+  }
+
+  Serial.println("Cached Laravel config loaded.");
+}
 
 void runOnlineStartupTasks()
 {
@@ -64,6 +89,8 @@ void setup()
   checkWifiResetOnBoot();
 
   StoredDeviceConfig storedConfig = loadStoredDeviceConfig();
+
+  loadCachedLaravelConfigIfAvailable();
 
   if (!storedConfig.hasWifiCredentials)
   {
