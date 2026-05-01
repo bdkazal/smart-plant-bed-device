@@ -53,7 +53,7 @@ void loadCachedLaravelConfigIfAvailable()
 void runOnlineStartupTasks()
 {
   fetchConfig();
-  syncTimeFromNtp();
+  syncTimeFromNtp(deviceConfig.timezone);
 
   sendHeartbeat();
   sendDeviceStateSync(0);
