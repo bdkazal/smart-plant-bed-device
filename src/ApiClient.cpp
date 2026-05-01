@@ -8,6 +8,7 @@
 #include "CommandHandler.h"
 #include "ValveController.h"
 #include "FirmwareInfo.h"
+#include "DeviceStorage.h"
 
 static const unsigned long SERVER_REACHABLE_WINDOW_MS = 45000;
 
@@ -96,10 +97,19 @@ void fetchConfig()
     {
       Serial.println("Config response received but parsing failed.");
     }
+    else
+    {
+      String configJson = extractConfigJsonFromResponse(response);
+
+      if (configJson.length() > 0)
+      {
+        saveCachedConfigJsonIfChanged(configJson);
+      }
+    }
   }
   else
   {
-    Serial.println("Config fetch failed. Keeping previous/default config.");
+    Serial.println("Config fetch failed. Keeping previous/cached/default config.");
   }
 
   http.end();
