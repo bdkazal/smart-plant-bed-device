@@ -3,7 +3,7 @@
 #include <Arduino.h>
 
 void beginTimeSync();
-void syncTimeFromNtp();
+void syncTimeFromNtp(const String &timezoneName);
 
 bool isTimeReady();
 
