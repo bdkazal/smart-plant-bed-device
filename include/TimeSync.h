@@ -8,4 +8,5 @@ void syncTimeFromNtp(const String &timezoneName);
 bool isTimeReady();
 
 int getCurrentDayOfWeekIso();
+String getCurrentDateString();
 String getCurrentTimeString();
