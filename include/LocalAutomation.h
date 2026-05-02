@@ -4,3 +4,4 @@
 
 void beginLocalAutomation();
 void updateLocalAutomation(const SensorReading &reading);
+void updateLocalScheduleFallback();
