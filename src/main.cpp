@@ -21,6 +21,7 @@ const unsigned long HEARTBEAT_INTERVAL_MS = 15000;
 const unsigned long COMMAND_POLL_INTERVAL_MS = 5000;
 const unsigned long READING_INTERVAL_MS = 30000;
 const unsigned long CONFIG_REFRESH_INTERVAL_MS = 60000;
+const unsigned long SCHEDULE_CHECK_INTERVAL_MS = 5000;
 
 // Slower retry timing when Wi-Fi is connected but Laravel is not reachable.
 // This keeps the device responsive without spamming failed API requests.
@@ -32,6 +33,7 @@ unsigned long lastHeartbeatAt = 0;
 unsigned long lastCommandPollAt = 0;
 unsigned long lastReadingAt = 0;
 unsigned long lastConfigRefreshAt = 0;
+unsigned long lastScheduleCheckAt = 0;
 
 void loadCachedLaravelConfigIfAvailable()
 {
@@ -98,6 +100,7 @@ void runOnlineStartupTasks()
   pollCommands();
 
   handleSensorReadingCycle();
+  updateLocalScheduleFallback();
 
   unsigned long now = millis();
 
@@ -105,6 +108,7 @@ void runOnlineStartupTasks()
   lastCommandPollAt = now;
   lastReadingAt = now;
   lastConfigRefreshAt = now;
+  lastScheduleCheckAt = now;
 }
 
 void setup()
@@ -205,6 +209,12 @@ void loop()
   {
     handleSensorReadingCycle();
     lastReadingAt = now;
+  }
+
+  if (now - lastScheduleCheckAt >= SCHEDULE_CHECK_INTERVAL_MS)
+  {
+    updateLocalScheduleFallback();
+    lastScheduleCheckAt = now;
   }
 
   if (now - lastConfigRefreshAt >= getConfigRefreshIntervalMs())
