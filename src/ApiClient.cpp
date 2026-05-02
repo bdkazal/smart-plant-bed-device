@@ -21,10 +21,11 @@ void markServerResult(int statusCode)
   {
     serverReachable = true;
     lastServerSuccessAt = millis();
-    return;
   }
 
-  serverReachable = false;
+  // Do not mark Laravel unreachable after a single failed request.
+  // One endpoint can fail briefly while another succeeds.
+  // isServerRecentlyReachable() becomes false when the last success is older than the reachability window.
 }
 
 void markServerUnavailable()
