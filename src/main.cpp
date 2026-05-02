@@ -22,6 +22,12 @@ const unsigned long COMMAND_POLL_INTERVAL_MS = 5000;
 const unsigned long READING_INTERVAL_MS = 30000;
 const unsigned long CONFIG_REFRESH_INTERVAL_MS = 60000;
 
+// Slower retry timing when Wi-Fi is connected but Laravel is not reachable.
+// This keeps the device responsive without spamming failed API requests.
+const unsigned long OFFLINE_HEARTBEAT_INTERVAL_MS = 30000;
+const unsigned long OFFLINE_COMMAND_POLL_INTERVAL_MS = 30000;
+const unsigned long OFFLINE_CONFIG_REFRESH_INTERVAL_MS = 120000;
+
 unsigned long lastHeartbeatAt = 0;
 unsigned long lastCommandPollAt = 0;
 unsigned long lastReadingAt = 0;
@@ -51,6 +57,37 @@ void loadCachedLaravelConfigIfAvailable()
   Serial.println("Cached Laravel config loaded.");
 }
 
+unsigned long getHeartbeatIntervalMs()
+{
+  return isServerRecentlyReachable() ? HEARTBEAT_INTERVAL_MS : OFFLINE_HEARTBEAT_INTERVAL_MS;
+}
+
+unsigned long getCommandPollIntervalMs()
+{
+  return isServerRecentlyReachable() ? COMMAND_POLL_INTERVAL_MS : OFFLINE_COMMAND_POLL_INTERVAL_MS;
+}
+
+unsigned long getConfigRefreshIntervalMs()
+{
+  return isServerRecentlyReachable() ? CONFIG_REFRESH_INTERVAL_MS : OFFLINE_CONFIG_REFRESH_INTERVAL_MS;
+}
+
+void handleSensorReadingCycle()
+{
+  SensorReading reading = readSensors();
+
+  if (isServerRecentlyReachable())
+  {
+    sendSensorReading(reading);
+  }
+  else
+  {
+    Serial.println("Laravel not reachable. Sensor reading kept local for fallback automation.");
+  }
+
+  updateLocalAutomation(reading);
+}
+
 void runOnlineStartupTasks()
 {
   fetchConfig();
@@ -60,9 +97,7 @@ void runOnlineStartupTasks()
   sendDeviceStateSync(0);
   pollCommands();
 
-  SensorReading reading = readSensors();
-  sendSensorReading(reading);
-  updateLocalAutomation(reading);
+  handleSensorReadingCycle();
 
   unsigned long now = millis();
 
@@ -149,7 +184,7 @@ void loop()
 
   unsigned long now = millis();
 
-  if (now - lastHeartbeatAt >= HEARTBEAT_INTERVAL_MS)
+  if (now - lastHeartbeatAt >= getHeartbeatIntervalMs())
   {
     sendHeartbeat();
     sendDeviceStateSync(0);
@@ -160,7 +195,7 @@ void loop()
     lastHeartbeatAt = now;
   }
 
-  if (now - lastCommandPollAt >= COMMAND_POLL_INTERVAL_MS)
+  if (now - lastCommandPollAt >= getCommandPollIntervalMs())
   {
     pollCommands();
     lastCommandPollAt = now;
@@ -168,13 +203,11 @@ void loop()
 
   if (now - lastReadingAt >= READING_INTERVAL_MS)
   {
-    SensorReading reading = readSensors();
-    sendSensorReading(reading);
-    updateLocalAutomation(reading);
+    handleSensorReadingCycle();
     lastReadingAt = now;
   }
 
-  if (now - lastConfigRefreshAt >= CONFIG_REFRESH_INTERVAL_MS)
+  if (now - lastConfigRefreshAt >= getConfigRefreshIntervalMs())
   {
     Serial.println();
     Serial.println("Refreshing device config...");
