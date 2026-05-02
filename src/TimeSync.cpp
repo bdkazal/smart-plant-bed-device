@@ -100,6 +100,21 @@ int getCurrentDayOfWeekIso()
     return timeInfo.tm_wday;
 }
 
+String getCurrentDateString()
+{
+    struct tm timeInfo;
+
+    if (!getLocalTime(&timeInfo))
+    {
+        return "";
+    }
+
+    char buffer[11];
+    strftime(buffer, sizeof(buffer), "%Y-%m-%d", &timeInfo);
+
+    return String(buffer);
+}
+
 String getCurrentTimeString()
 {
     struct tm timeInfo;
