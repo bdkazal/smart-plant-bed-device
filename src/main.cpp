@@ -14,6 +14,7 @@
 #include "ManualButton.h"
 #include "AppConfig.h"
 #include "TimeSync.h"
+#include "LocalAutomation.h"
 
 // Backend contract timing
 const unsigned long HEARTBEAT_INTERVAL_MS = 15000;
@@ -61,6 +62,7 @@ void runOnlineStartupTasks()
 
   SensorReading reading = readSensors();
   sendSensorReading(reading);
+  updateLocalAutomation(reading);
 
   unsigned long now = millis();
 
@@ -85,6 +87,7 @@ void setup()
   beginManualButton();
   beginSensorReader();
   beginTimeSync();
+  beginLocalAutomation();
 
   printDeviceIdentity();
   printFirmwareInfo();
@@ -167,6 +170,7 @@ void loop()
   {
     SensorReading reading = readSensors();
     sendSensorReading(reading);
+    updateLocalAutomation(reading);
     lastReadingAt = now;
   }
 
