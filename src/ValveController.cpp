@@ -146,7 +146,7 @@ void startLocalWatering(int durationSeconds)
     }
 
     Serial.println();
-    Serial.println("Starting local manual watering from physical button.");
+    Serial.println("Starting local watering.");
 
     activeCommandId = 0;
     wateringStartedAt = millis();
@@ -154,8 +154,8 @@ void startLocalWatering(int durationSeconds)
 
     openFakeValve();
 
-    // Local button watering has no Laravel command ID.
-    // We still sync state so dashboard can show watering/open.
+    // Local watering has no Laravel command ID.
+    // It may be started by the physical button, offline auto fallback, or offline schedule fallback.
     sendDeviceStateSync(0);
 
     Serial.print("Local watering duration seconds: ");
@@ -236,7 +236,7 @@ void updateWateringState()
     }
     else
     {
-        // Local physical-button watering completed.
+        // Local watering completed without a Laravel command ID.
         sendDeviceStateSync(0);
     }
 
