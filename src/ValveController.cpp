@@ -31,6 +31,17 @@ int getActiveCommandId()
     return activeCommandId;
 }
 
+void syncDeviceStateIfServerReachable(int lastCompletedCommandId = 0)
+{
+    if (!isServerRecentlyReachable())
+    {
+        Serial.println("Device state sync skipped: Laravel is not recently reachable.");
+        return;
+    }
+
+    sendDeviceStateSync(lastCompletedCommandId);
+}
+
 void openFakeValve()
 {
     valveOpen = true;
@@ -156,7 +167,7 @@ void startLocalWatering(int durationSeconds)
 
     // Local watering has no Laravel command ID.
     // It may be started by the physical button, offline auto fallback, or offline schedule fallback.
-    sendDeviceStateSync(0);
+    syncDeviceStateIfServerReachable(0);
 
     Serial.print("Local watering duration seconds: ");
     Serial.println(durationSeconds);
@@ -198,7 +209,7 @@ void stopLocalWatering()
     }
 
     // Local physical-button watering had no Laravel command ID.
-    sendDeviceStateSync(0);
+    syncDeviceStateIfServerReachable(0);
 }
 
 void updateWateringState()
@@ -237,7 +248,7 @@ void updateWateringState()
     else
     {
         // Local watering completed without a Laravel command ID.
-        sendDeviceStateSync(0);
+        syncDeviceStateIfServerReachable(0);
     }
 
     activeCommandId = 0;
