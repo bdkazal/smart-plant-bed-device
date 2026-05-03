@@ -153,20 +153,20 @@ String temperatureText()
 {
     if (hasLatestDisplayReading && latestDisplayReading.hasTemperature)
     {
-        return "T " + String((int)round(latestDisplayReading.temperatureC)) + "C";
+        return "Temp " + String((int)round(latestDisplayReading.temperatureC)) + "C";
     }
 
-    return "T --C";
+    return "Temp --C";
 }
 
 String humidityText()
 {
     if (hasLatestDisplayReading && latestDisplayReading.hasHumidity)
     {
-        return "H " + String((int)round(latestDisplayReading.humidityPercent)) + "%";
+        return "Hum " + String((int)round(latestDisplayReading.humidityPercent)) + "%";
     }
 
-    return "H --%";
+    return "Hum --%";
 }
 
 String statusTitleText()
@@ -181,7 +181,7 @@ String statusTitleText()
         return "Offline Mode";
     }
 
-    return "Plant Bed";
+    return "|| Plant Buddy ||";
 }
 
 void wakeDisplay(unsigned long visibleMs)
