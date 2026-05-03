@@ -4,6 +4,7 @@
 
 #include "ApiClient.h"
 #include "DisplayManager.h"
+#include "StatusLed.h"
 #include "ValveDriver.h"
 
 // Valve / watering runtime state.
@@ -53,6 +54,7 @@ void openFakeValve()
     valveOpen = true;
     wateringActive = true;
     setValveDriverOpen(true);
+    setWateringStatusLed(true);
 
     Serial.println();
     Serial.println("VALVE: OPEN");
@@ -66,6 +68,7 @@ void closeFakeValve()
     valveOpen = false;
     wateringActive = false;
     setValveDriverOpen(false);
+    setWateringStatusLed(false);
 
     Serial.println();
     Serial.println("VALVE: CLOSED");
