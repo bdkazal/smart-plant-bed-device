@@ -29,9 +29,11 @@ void clearAndPrepareText()
     oled.setCursor(0, 0);
 }
 
-void printLine(int line, const String &text)
+// Four readable rows on a 128x64 OLED.
+// Each row gets 8px text height + about 8px empty space below it.
+void printDisplayRow(int row, const String &text)
 {
-    oled.setCursor(0, line * 8);
+    oled.setCursor(0, row * 16);
     oled.print(text);
 }
 
@@ -57,14 +59,27 @@ String modeText()
 
 String wateringStateText()
 {
-    return isWateringActive() ? "WATER" : "IDLE";
+    return isWateringActive() ? "Watering" : "IDLE";
+}
+
+String paddedModeStateText()
+{
+    String mode = modeText();
+    String state = wateringStateText();
+
+    while (mode.length() < 10)
+    {
+        mode += " ";
+    }
+
+    return mode + state;
 }
 
 String soilStatusText()
 {
     if (!hasLatestDisplayReading || !latestDisplayReading.hasSoilMoisture)
     {
-        return "Soil --";
+        return "SOIL  --    N/A";
     }
 
     String status = "OK";
@@ -78,7 +93,14 @@ String soilStatusText()
         status = "LOW";
     }
 
-    return "Soil " + String(latestDisplayReading.soilMoisturePercent) + "% " + status;
+    String percent = String(latestDisplayReading.soilMoisturePercent) + "%";
+
+    while (percent.length() < 5)
+    {
+        percent += " ";
+    }
+
+    return "SOIL  " + percent + " " + status;
 }
 
 String temperatureHumidityText()
@@ -96,22 +118,22 @@ String temperatureHumidityText()
         humidity = String((int)round(latestDisplayReading.humidityPercent));
     }
 
-    return "T " + temperature + "C H " + humidity + "%";
+    return "T " + temperature + "C     H " + humidity + "%";
 }
 
 String statusTitleText()
 {
     if (!isWiFiConnected())
     {
-        return "WIFI OFF";
+        return "WIFI OFFLINE";
     }
 
     if (!isServerRecentlyReachable())
     {
-        return "LOCAL MODE";
+        return "Offline Mode";
     }
 
-    return "Plant Bed";
+    return "SMART PLANT BED";
 }
 
 void wakeDisplay(unsigned long visibleMs)
@@ -167,8 +189,8 @@ void beginDisplayManager()
     }
 
     clearAndPrepareText();
-    printLine(0, "Smart Plant Bed");
-    printLine(1, "OLED ready");
+    printDisplayRow(0, "SMART PLANT BED");
+    printDisplayRow(1, "OLED ready");
     oled.display();
 
     wakeDisplay(OLED_BOOT_SHOW_MS);
@@ -185,10 +207,10 @@ void displayShowBootStatus(const String &line1, const String &line2, const Strin
     wakeDisplay(OLED_BOOT_SHOW_MS);
 
     clearAndPrepareText();
-    printLine(0, "BOOTING...");
-    printLine(1, line1);
-    printLine(2, line2);
-    printLine(3, line3);
+    printDisplayRow(0, "BOOTING...");
+    printDisplayRow(1, line1);
+    printDisplayRow(2, line2);
+    printDisplayRow(3, line3);
     oled.display();
 }
 
@@ -209,10 +231,10 @@ void displayShowCurrentStatus(unsigned long visibleMs)
     wakeDisplay(visibleMs);
 
     clearAndPrepareText();
-    printLine(0, statusTitleText());
-    printLine(1, modeText() + " " + wateringStateText());
-    printLine(2, soilStatusText());
-    printLine(3, temperatureHumidityText());
+    printDisplayRow(0, statusTitleText());
+    printDisplayRow(1, paddedModeStateText());
+    printDisplayRow(2, soilStatusText());
+    printDisplayRow(3, temperatureHumidityText());
     oled.display();
 }
 
@@ -227,10 +249,10 @@ void displayShowWateringStatus(unsigned long visibleMs)
     wakeDisplay(visibleMs);
 
     clearAndPrepareText();
-    printLine(0, modeText() + " WATERING");
-    printLine(1, soilStatusText());
-    printLine(2, String(getWateringDurationSeconds()) + " sec");
-    printLine(3, temperatureHumidityText());
+    printDisplayRow(0, "WATERING");
+    printDisplayRow(1, paddedModeStateText());
+    printDisplayRow(2, soilStatusText());
+    printDisplayRow(3, "TIME  " + String(getWateringDurationSeconds()) + " sec");
     oled.display();
 }
 
@@ -245,9 +267,10 @@ void displayShowWateringDone(unsigned long visibleMs)
     wakeDisplay(visibleMs);
 
     clearAndPrepareText();
-    printLine(0, "Watering DONE");
-    printLine(1, "Valve CLOSED");
-    printLine(2, soilStatusText());
+    printDisplayRow(0, "WATERING DONE");
+    printDisplayRow(1, "VALVE     CLOSED");
+    printDisplayRow(2, soilStatusText());
+    printDisplayRow(3, "Returning idle");
     oled.display();
 }
 
@@ -275,10 +298,10 @@ void displayShowCriticalIfNeeded()
     wakeDisplay(0);
 
     clearAndPrepareText();
-    printLine(0, "DRY SOIL");
-    printLine(1, "Soil " + String(latestDisplayReading.soilMoisturePercent) + "%");
-    printLine(2, "Critical " + String(SOIL_CRITICAL_PERCENT) + "%");
-    printLine(3, modeText() + " " + wateringStateText());
+    printDisplayRow(0, "* DRY SOIL *");
+    printDisplayRow(1, "SOIL  " + String(latestDisplayReading.soilMoisturePercent) + "%");
+    printDisplayRow(2, "LIMIT " + String(SOIL_CRITICAL_PERCENT) + "%");
+    printDisplayRow(3, paddedModeStateText());
     oled.display();
 }
 
