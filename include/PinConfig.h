@@ -48,6 +48,10 @@ static const int SOIL_WET_RAW = 1000;
 // and send soil_moisture:null to Laravel.
 static const int SOIL_DISCONNECTED_RAW_MAX = 800;
 
+// Critical dry warning shown on the OLED display.
+// This does not directly control watering; it is only a visible warning threshold.
+static const int SOIL_CRITICAL_PERCENT = 15;
+
 // GPIO25 is used for local manual watering button.
 // Wiring:
 //   GPIO25 ---- button ---- GND
@@ -59,3 +63,21 @@ static const int MANUAL_WATER_BUTTON_PIN = 25;
 
 // GPIO32 is used for DHT11 temperature/humidity sensor data.
 static const int DHT_SENSOR_PIN = 32;
+
+// 0.96 inch SSD1306 I2C OLED display.
+// Classic ESP32 default I2C pins:
+//   SDA = GPIO21
+//   SCL = GPIO22
+//
+// ESP32-C3 boards will need a different pin map later.
+static const int OLED_I2C_SDA_PIN = 21;
+static const int OLED_I2C_SCL_PIN = 22;
+static const int OLED_I2C_ADDRESS = 0x3C;
+static const int OLED_SCREEN_WIDTH = 128;
+static const int OLED_SCREEN_HEIGHT = 64;
+static const int OLED_RESET_PIN = -1;
+
+// Display behavior.
+static const unsigned long OLED_BOOT_SHOW_MS = 12000;
+static const unsigned long OLED_STATUS_SHOW_MS = 10000;
+static const unsigned long OLED_WATERING_SHOW_MS = 10000;
