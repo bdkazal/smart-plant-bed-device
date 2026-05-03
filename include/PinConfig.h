@@ -22,6 +22,11 @@ static const bool VALVE_ACTIVE_LOW = false;
 static const int WIFI_STATUS_LED_PIN = 27;
 static const bool WIFI_STATUS_LED_ACTIVE_LOW = false;
 
+// GPIO14 is used for watering status LED.
+// Idle = OFF, watering = ON.
+static const int WATERING_STATUS_LED_PIN = 14;
+static const bool WATERING_STATUS_LED_ACTIVE_LOW = false;
+
 // GPIO34 is input-only and belongs to ADC1.
 // ADC1 pins are preferred for analog sensors while Wi-Fi is active.
 static const int SOIL_MOISTURE_PIN = 34;
@@ -61,6 +66,15 @@ static const int SOIL_CRITICAL_PERCENT = 15;
 //   pressed     = LOW
 static const int MANUAL_WATER_BUTTON_PIN = 25;
 
+// GPIO33 is used for OLED wake/status button.
+// Wiring:
+//   GPIO33 ---- button ---- GND
+//
+// Internal pull-up is used:
+//   not pressed = HIGH
+//   pressed     = LOW
+static const int DISPLAY_WAKE_BUTTON_PIN = 33;
+
 // GPIO32 is used for DHT11 temperature/humidity sensor data.
 static const int DHT_SENSOR_PIN = 32;
 
@@ -80,4 +94,5 @@ static const int OLED_RESET_PIN = -1;
 // Display behavior.
 static const unsigned long OLED_BOOT_SHOW_MS = 12000;
 static const unsigned long OLED_STATUS_SHOW_MS = 10000;
+static const unsigned long OLED_WAKE_BUTTON_SHOW_MS = 30000;
 static const unsigned long OLED_WATERING_SHOW_MS = 10000;
