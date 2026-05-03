@@ -135,6 +135,10 @@ void setup()
   beginTimeSync();
   beginLocalAutomation();
   beginDisplayManager();
+
+  displayShowBootLogo(2500);
+  delay(2500);
+
   displayShowBootStatus("Starting device", "Loading config", "Please wait");
 
   printDeviceIdentity();
