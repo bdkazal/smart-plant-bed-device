@@ -16,6 +16,7 @@
 #include "TimeSync.h"
 #include "LocalAutomation.h"
 #include "DisplayManager.h"
+#include "PinConfig.h"
 
 // Backend contract timing
 const unsigned long HEARTBEAT_INTERVAL_MS = 15000;
