@@ -35,11 +35,6 @@ void printLine(int line, const String &text)
     oled.print(text);
 }
 
-String onOffText(bool value)
-{
-    return value ? "OK" : "OFF";
-}
-
 String modeText()
 {
     if (deviceConfig.wateringMode == "schedule")
@@ -60,11 +55,16 @@ String modeText()
     return deviceConfig.wateringMode;
 }
 
+String wateringStateText()
+{
+    return isWateringActive() ? "WATER" : "IDLE";
+}
+
 String soilStatusText()
 {
     if (!hasLatestDisplayReading || !latestDisplayReading.hasSoilMoisture)
     {
-        return "Soil:-- SENSOR";
+        return "Soil --";
     }
 
     String status = "OK";
@@ -78,7 +78,7 @@ String soilStatusText()
         status = "LOW";
     }
 
-    return "Soil:" + String(latestDisplayReading.soilMoisturePercent) + "% " + status;
+    return "Soil " + String(latestDisplayReading.soilMoisturePercent) + "% " + status;
 }
 
 String temperatureHumidityText()
@@ -96,27 +96,22 @@ String temperatureHumidityText()
         humidity = String((int)round(latestDisplayReading.humidityPercent));
     }
 
-    return "T:" + temperature + "C H:" + humidity + "%";
+    return "T " + temperature + "C H " + humidity + "%";
 }
 
-String footerText()
+String statusTitleText()
 {
-    if (deviceConfig.wateringMode == "schedule")
+    if (!isWiFiConnected())
     {
-        return "Next:--:--";
-    }
-
-    if (deviceConfig.wateringMode == "auto")
-    {
-        return "Th:" + String(deviceConfig.soilMoistureThreshold) + "% C:" + String(deviceConfig.cooldownMinutes) + "m";
+        return "WIFI OFF";
     }
 
     if (!isServerRecentlyReachable())
     {
-        return "Local fallback";
+        return "LOCAL MODE";
     }
 
-    return isTimeReady() ? getCurrentTimeString().substring(0, 5) : "Time:--:--";
+    return "Plant Bed";
 }
 
 void wakeDisplay(unsigned long visibleMs)
@@ -214,17 +209,14 @@ void displayShowCurrentStatus(unsigned long visibleMs)
     wakeDisplay(visibleMs);
 
     clearAndPrepareText();
-    printLine(0, "Plant Bed");
-    printLine(1, "WiFi:" + onOffText(isWiFiConnected()) + " Srv:" + onOffText(isServerRecentlyReachable()));
-    printLine(2, "Mode:" + modeText());
-    printLine(3, String("Valve:") + (isValveOpen() ? "OPEN" : "CLOSED"));
-    printLine(4, soilStatusText());
-    printLine(5, temperatureHumidityText());
-    printLine(6, footerText());
+    printLine(0, statusTitleText());
+    printLine(1, modeText() + " " + wateringStateText());
+    printLine(2, soilStatusText());
+    printLine(3, temperatureHumidityText());
     oled.display();
 }
 
-void displayShowWateringStatus(const String &title, unsigned long visibleMs)
+void displayShowWateringStatus(unsigned long visibleMs)
 {
     if (!displayAvailable)
     {
@@ -235,13 +227,27 @@ void displayShowWateringStatus(const String &title, unsigned long visibleMs)
     wakeDisplay(visibleMs);
 
     clearAndPrepareText();
-    printLine(0, title);
-    printLine(1, String("Valve:") + (isValveOpen() ? "OPEN" : "CLOSED"));
-    printLine(2, soilStatusText());
+    printLine(0, modeText() + " WATERING");
+    printLine(1, soilStatusText());
+    printLine(2, String(getWateringDurationSeconds()) + " sec");
     printLine(3, temperatureHumidityText());
-    printLine(4, "WiFi:" + onOffText(isWiFiConnected()) + " Srv:" + onOffText(isServerRecentlyReachable()));
-    printLine(5, "Mode:" + modeText());
-    printLine(6, isServerRecentlyReachable() ? "Server control" : "Local fallback");
+    oled.display();
+}
+
+void displayShowWateringDone(unsigned long visibleMs)
+{
+    if (!displayAvailable)
+    {
+        return;
+    }
+
+    criticalDisplayActive = false;
+    wakeDisplay(visibleMs);
+
+    clearAndPrepareText();
+    printLine(0, "Watering DONE");
+    printLine(1, "Valve CLOSED");
+    printLine(2, soilStatusText());
     oled.display();
 }
 
@@ -252,10 +258,9 @@ void displayShowCriticalIfNeeded()
         return;
     }
 
-    bool sensorMissing = !latestDisplayReading.hasSoilMoisture;
     bool criticalDry = latestDisplayReading.hasSoilMoisture && latestDisplayReading.soilMoisturePercent <= SOIL_CRITICAL_PERCENT;
 
-    if (!sensorMissing && !criticalDry)
+    if (!criticalDry)
     {
         if (criticalDisplayActive)
         {
@@ -270,28 +275,10 @@ void displayShowCriticalIfNeeded()
     wakeDisplay(0);
 
     clearAndPrepareText();
-
-    if (sensorMissing)
-    {
-        printLine(0, "SENSOR ERROR");
-        printLine(1, "Soil:--");
-        printLine(2, "Moisture sensor");
-        printLine(3, "not detected");
-        printLine(4, "Auto disabled");
-        printLine(5, "WiFi:" + onOffText(isWiFiConnected()) + " Srv:" + onOffText(isServerRecentlyReachable()));
-        printLine(6, "Check wiring");
-    }
-    else
-    {
-        printLine(0, "!! DRY SOIL !!");
-        printLine(1, "Soil:" + String(latestDisplayReading.soilMoisturePercent) + "%");
-        printLine(2, "Critical:" + String(SOIL_CRITICAL_PERCENT) + "%");
-        printLine(3, String("Valve:") + (isValveOpen() ? "OPEN" : "CLOSED"));
-        printLine(4, "Mode:" + modeText());
-        printLine(5, "WiFi:" + onOffText(isWiFiConnected()) + " Srv:" + onOffText(isServerRecentlyReachable()));
-        printLine(6, "Check plant bed");
-    }
-
+    printLine(0, "DRY SOIL");
+    printLine(1, "Soil " + String(latestDisplayReading.soilMoisturePercent) + "%");
+    printLine(2, "Critical " + String(SOIL_CRITICAL_PERCENT) + "%");
+    printLine(3, modeText() + " " + wateringStateText());
     oled.display();
 }
 
