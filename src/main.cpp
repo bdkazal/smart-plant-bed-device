@@ -15,6 +15,7 @@
 #include "AppConfig.h"
 #include "TimeSync.h"
 #include "LocalAutomation.h"
+#include "DisplayManager.h"
 
 // Backend contract timing
 const unsigned long HEARTBEAT_INTERVAL_MS = 15000;
@@ -77,6 +78,7 @@ unsigned long getConfigRefreshIntervalMs()
 void handleSensorReadingCycle()
 {
   SensorReading reading = readSensors();
+  displaySetLatestSensorReading(reading);
 
   if (isServerRecentlyReachable())
   {
@@ -88,6 +90,7 @@ void handleSensorReadingCycle()
   }
 
   updateLocalAutomation(reading);
+  displayShowCriticalIfNeeded();
 }
 
 void runOnlineStartupTasks()
@@ -101,6 +104,7 @@ void runOnlineStartupTasks()
 
   handleSensorReadingCycle();
   updateLocalScheduleFallback();
+  displayShowCurrentStatus(OLED_STATUS_SHOW_MS);
 
   unsigned long now = millis();
 
@@ -127,6 +131,8 @@ void setup()
   beginSensorReader();
   beginTimeSync();
   beginLocalAutomation();
+  beginDisplayManager();
+  displayShowBootStatus("Starting device", "Loading config", "Please wait");
 
   printDeviceIdentity();
   printFirmwareInfo();
@@ -140,16 +146,23 @@ void setup()
   if (!storedConfig.hasWifiCredentials)
   {
     Serial.println("No Wi-Fi saved. Starting setup portal.");
+    displayShowBootStatus("WiFi setup", "Portal active", "Connect phone");
     startSetupPortal();
     return;
   }
 
+  displayShowBootStatus("Connecting WiFi", storedConfig.wifiSsid, "");
   connectToWiFiUsingConfig(storedConfig);
 
   if (isWiFiConnected())
   {
     setWifiStatusLedConnected();
+    displayShowBootStatus("WiFi connected", "Fetching config", "Syncing time");
     runOnlineStartupTasks();
+  }
+  else
+  {
+    displayShowBootStatus("WiFi failed", "Using cached cfg", "Offline mode");
   }
 }
 
@@ -159,6 +172,7 @@ void loop()
   {
     updateWifiStatusLedDisconnected();
     handleSetupPortal();
+    updateDisplayManager();
     return;
   }
 
@@ -176,6 +190,7 @@ void loop()
       setWifiStatusLedConnected();
 
       Serial.println("Reconnected. Running online startup tasks...");
+      displayShowBootStatus("WiFi reconnected", "Running sync", "");
       runOnlineStartupTasks();
     }
   }
@@ -224,4 +239,6 @@ void loop()
     fetchConfig();
     lastConfigRefreshAt = now;
   }
+
+  updateDisplayManager();
 }
