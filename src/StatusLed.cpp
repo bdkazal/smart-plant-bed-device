@@ -9,38 +9,51 @@ static const unsigned long WIFI_BLINK_INTERVAL_MS = 2000;
 bool wifiLedBlinkState = false;
 unsigned long lastWifiBlinkAt = 0;
 
-int wifiLedOnLevel()
+int ledOnLevel(bool activeLow)
 {
-    return WIFI_STATUS_LED_ACTIVE_LOW ? LOW : HIGH;
+    return activeLow ? LOW : HIGH;
 }
 
-int wifiLedOffLevel()
+int ledOffLevel(bool activeLow)
 {
-    return WIFI_STATUS_LED_ACTIVE_LOW ? HIGH : LOW;
+    return activeLow ? HIGH : LOW;
 }
 
 void writeWifiLed(bool on)
 {
     digitalWrite(
         WIFI_STATUS_LED_PIN,
-        on ? wifiLedOnLevel() : wifiLedOffLevel());
+        on ? ledOnLevel(WIFI_STATUS_LED_ACTIVE_LOW) : ledOffLevel(WIFI_STATUS_LED_ACTIVE_LOW));
+}
+
+void writeWateringLed(bool on)
+{
+    digitalWrite(
+        WATERING_STATUS_LED_PIN,
+        on ? ledOnLevel(WATERING_STATUS_LED_ACTIVE_LOW) : ledOffLevel(WATERING_STATUS_LED_ACTIVE_LOW));
 }
 
 void beginStatusLed()
 {
     pinMode(WIFI_STATUS_LED_PIN, OUTPUT);
+    pinMode(WATERING_STATUS_LED_PIN, OUTPUT);
 
     wifiLedBlinkState = false;
     lastWifiBlinkAt = 0;
 
     writeWifiLed(false);
+    writeWateringLed(false);
 
     Serial.println();
-    Serial.println("Status LED initialized.");
+    Serial.println("Status LEDs initialized.");
     Serial.print("Wi-Fi status LED GPIO: ");
     Serial.println(WIFI_STATUS_LED_PIN);
     Serial.print("Wi-Fi status LED active mode: ");
     Serial.println(WIFI_STATUS_LED_ACTIVE_LOW ? "ACTIVE LOW" : "ACTIVE HIGH");
+    Serial.print("Watering status LED GPIO: ");
+    Serial.println(WATERING_STATUS_LED_PIN);
+    Serial.print("Watering status LED active mode: ");
+    Serial.println(WATERING_STATUS_LED_ACTIVE_LOW ? "ACTIVE LOW" : "ACTIVE HIGH");
 }
 
 void setWifiStatusLedConnected()
@@ -62,4 +75,9 @@ void updateWifiStatusLedDisconnected()
     wifiLedBlinkState = !wifiLedBlinkState;
 
     writeWifiLed(wifiLedBlinkState);
+}
+
+void setWateringStatusLed(bool watering)
+{
+    writeWateringLed(watering);
 }
