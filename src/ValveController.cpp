@@ -3,6 +3,7 @@
 #include <Arduino.h>
 
 #include "ApiClient.h"
+#include "DisplayManager.h"
 #include "ValveDriver.h"
 
 // Valve / watering runtime state.
@@ -31,6 +32,11 @@ int getActiveCommandId()
     return activeCommandId;
 }
 
+int getWateringDurationSeconds()
+{
+    return wateringDurationMs / 1000UL;
+}
+
 void syncDeviceStateIfServerReachable(int lastCompletedCommandId = 0)
 {
     if (!isServerRecentlyReachable())
@@ -51,6 +57,8 @@ void openFakeValve()
     Serial.println();
     Serial.println("VALVE: OPEN");
     Serial.println("Watering state: watering");
+
+    displayShowWateringStatus(0);
 }
 
 void closeFakeValve()
@@ -105,6 +113,7 @@ void stopWateringCommand(int commandId)
     int interruptedCommandId = activeCommandId;
 
     closeFakeValve();
+    displayShowWateringDone();
 
     if (interruptedCommandId > 0 && interruptedCommandId != commandId)
     {
@@ -187,6 +196,7 @@ void stopLocalWatering()
     int stoppedCommandId = activeCommandId;
 
     closeFakeValve();
+    displayShowWateringDone();
 
     activeCommandId = 0;
     wateringStartedAt = 0;
@@ -232,6 +242,7 @@ void updateWateringState()
     int completedCommandId = activeCommandId;
 
     closeFakeValve();
+    displayShowWateringDone();
 
     if (completedCommandId > 0)
     {
