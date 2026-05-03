@@ -24,16 +24,17 @@ bool hasLatestDisplayReading = false;
 void clearAndPrepareText()
 {
     oled.clearDisplay();
+    oled.drawRect(0, 0, OLED_SCREEN_WIDTH, OLED_SCREEN_HEIGHT, SSD1306_WHITE);
     oled.setTextSize(1);
     oled.setTextColor(SSD1306_WHITE);
     oled.setCursor(0, 0);
 }
 
 // Four readable rows on a 128x64 OLED.
-// Each row gets 8px text height + about 8px empty space below it.
+// Text is inset slightly so it does not touch the simple 1px border.
 void printDisplayRow(int row, const String &text)
 {
-    oled.setCursor(0, row * 16);
+    oled.setCursor(4, row * 16 + 4);
     oled.print(text);
 }
 
