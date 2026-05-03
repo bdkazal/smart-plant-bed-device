@@ -12,6 +12,7 @@
 #include "ValveDriver.h"
 #include "StatusLed.h"
 #include "ManualButton.h"
+#include "DisplayButton.h"
 #include "AppConfig.h"
 #include "TimeSync.h"
 #include "LocalAutomation.h"
@@ -129,6 +130,7 @@ void setup()
   beginValveDriver();
   beginStatusLed();
   beginManualButton();
+  beginDisplayButton();
   beginSensorReader();
   beginTimeSync();
   beginLocalAutomation();
@@ -173,11 +175,13 @@ void loop()
   {
     updateWifiStatusLedDisconnected();
     handleSetupPortal();
+    updateDisplayButton();
     updateDisplayManager();
     return;
   }
 
   updateManualButton();
+  updateDisplayButton();
 
   if (!isWiFiConnected())
   {
