@@ -14,3 +14,4 @@ void updateWateringState();
 bool isValveOpen();
 bool isWateringActive();
 int getActiveCommandId();
+int getWateringDurationSeconds();
