@@ -6,6 +6,7 @@
 
 void beginDisplayManager();
 
+void displayShowBootLogo(unsigned long visibleMs = 2500);
 void displayShowBootStatus(const String &line1, const String &line2 = "", const String &line3 = "");
 
 void displaySetLatestSensorReading(const SensorReading &reading);
