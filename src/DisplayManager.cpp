@@ -6,6 +6,7 @@
 
 #include "ApiClient.h"
 #include "AppConfig.h"
+#include "BootLogo.h"
 #include "PinConfig.h"
 #include "TimeSync.h"
 #include "ValveController.h"
@@ -241,6 +242,32 @@ void beginDisplayManager()
     oled.display();
 
     wakeDisplay(OLED_BOOT_SHOW_MS);
+}
+
+void displayShowBootLogo(unsigned long visibleMs)
+{
+    if (!displayAvailable)
+    {
+        return;
+    }
+
+    criticalDisplayActive = false;
+    wakeDisplay(visibleMs);
+
+    oled.clearDisplay();
+
+    int x = (OLED_SCREEN_WIDTH - BOOT_LOGO_WIDTH) / 2;
+    int y = (OLED_SCREEN_HEIGHT - BOOT_LOGO_HEIGHT) / 2;
+
+    oled.drawBitmap(
+        x,
+        y,
+        bootLogoBitmap,
+        BOOT_LOGO_WIDTH,
+        BOOT_LOGO_HEIGHT,
+        SSD1306_WHITE);
+
+    oled.display();
 }
 
 void displayShowBootStatus(const String &line1, const String &line2, const String &line3)
