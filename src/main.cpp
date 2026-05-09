@@ -38,6 +38,14 @@ unsigned long lastReadingAt = 0;
 unsigned long lastConfigRefreshAt = 0;
 unsigned long lastScheduleCheckAt = 0;
 
+void updateLocalControls()
+{
+  updateManualButton();
+  updateDisplayButton();
+  updateWateringState();
+  updateDisplayManager();
+}
+
 void loadCachedLaravelConfigIfAvailable()
 {
   String cachedConfigJson = loadCachedConfigJson();
@@ -82,6 +90,8 @@ void handleSensorReadingCycle()
   SensorReading reading = readSensors();
   displaySetLatestSensorReading(reading);
 
+  updateLocalControls();
+
   if (isServerRecentlyReachable())
   {
     sendSensorReading(reading);
@@ -90,6 +100,8 @@ void handleSensorReadingCycle()
   {
     Serial.println("Laravel not reachable. Sensor reading kept local for fallback automation.");
   }
+
+  updateLocalControls();
 
   updateLocalAutomation(reading);
   displayShowCriticalIfNeeded();
@@ -179,66 +191,65 @@ void loop()
   {
     updateWifiStatusLedDisconnected();
     handleSetupPortal();
-    updateDisplayButton();
-    updateDisplayManager();
+    updateLocalControls();
     return;
   }
 
-  updateManualButton();
-  updateDisplayButton();
+  updateLocalControls();
 
   if (!isWiFiConnected())
   {
     updateWifiStatusLedDisconnected();
-
-    Serial.println("Wi-Fi disconnected. Reconnecting...");
-    connectToWiFi();
-
-    if (isWiFiConnected())
-    {
-      setWifiStatusLedConnected();
-
-      Serial.println("Reconnected. Running online startup tasks...");
-      displayShowBootStatus("WiFi reconnected", "Running sync", "");
-      runOnlineStartupTasks();
-    }
+    updateWiFiReconnect();
+    updateLocalControls();
   }
   else
   {
     setWifiStatusLedConnected();
   }
 
-  updateWateringState();
-
   unsigned long now = millis();
 
   if (now - lastHeartbeatAt >= getHeartbeatIntervalMs())
   {
     sendHeartbeat();
-    sendDeviceStateSync(0);
+    updateLocalControls();
+
+    if (isServerRecentlyReachable())
+    {
+      sendDeviceStateSync(0);
+    }
+    else
+    {
+      Serial.println("Device state sync skipped: Laravel is not recently reachable.");
+    }
 
     Serial.print("Laravel reachable recently: ");
     Serial.println(isServerRecentlyReachable() ? "yes" : "no");
 
     lastHeartbeatAt = now;
+    updateLocalControls();
   }
 
   if (now - lastCommandPollAt >= getCommandPollIntervalMs())
   {
     pollCommands();
     lastCommandPollAt = now;
+    updateLocalControls();
   }
 
   if (now - lastReadingAt >= READING_INTERVAL_MS)
   {
     handleSensorReadingCycle();
     lastReadingAt = now;
+    updateLocalControls();
   }
 
   if (now - lastScheduleCheckAt >= SCHEDULE_CHECK_INTERVAL_MS)
   {
     updateLocalScheduleFallback();
     lastScheduleCheckAt = now;
+    updateLocalControls();
   }
 
   if (now - lastConfigRefreshAt >= getConfigRefreshIntervalMs())
@@ -247,7 +258,8 @@ void loop()
     Serial.println("Refreshing device config...");
     fetchConfig();
     lastConfigRefreshAt = now;
+    updateLocalControls();
   }
 
-  updateDisplayManager();
+  updateLocalControls();
 }
