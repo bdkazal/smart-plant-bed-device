@@ -10,10 +10,19 @@
 #include "FirmwareInfo.h"
 #include "DeviceStorage.h"
 
-static const unsigned long SERVER_REACHABLE_WINDOW_MS = 45000;
+static const unsigned long SERVER_REACHABLE_WINDOW_MS = 15000;
+static const unsigned long SERVER_VERY_RECENT_WINDOW_MS = 5000;
+static const unsigned long HTTP_CONNECT_TIMEOUT_MS = 1000;
+static const unsigned long HTTP_RESPONSE_TIMEOUT_MS = 1500;
 
 bool serverReachable = false;
 unsigned long lastServerSuccessAt = 0;
+
+void prepareHttpClient(HTTPClient &http)
+{
+  http.setConnectTimeout(HTTP_CONNECT_TIMEOUT_MS);
+  http.setTimeout(HTTP_RESPONSE_TIMEOUT_MS);
+}
 
 void markServerResult(int statusCode)
 {
@@ -21,11 +30,17 @@ void markServerResult(int statusCode)
   {
     serverReachable = true;
     lastServerSuccessAt = millis();
+    return;
   }
 
-  // Do not mark Laravel unreachable after a single failed request.
-  // One endpoint can fail briefly while another succeeds.
-  // isServerRecentlyReachable() becomes false when the last success is older than the reachability window.
+  if (statusCode < 0)
+  {
+    serverReachable = false;
+  }
+
+  // Do not mark Laravel unreachable after every non-2xx response.
+  // A valid 401/404/500 response still means the server answered.
+  // Timeout / connection errors are negative status codes and mark offline.
 }
 
 void markServerUnavailable()
@@ -46,6 +61,21 @@ bool isServerRecentlyReachable()
   }
 
   return millis() - lastServerSuccessAt <= SERVER_REACHABLE_WINDOW_MS;
+}
+
+bool isServerVeryRecentlyReachable()
+{
+  if (!isWiFiConnected())
+  {
+    return false;
+  }
+
+  if (!serverReachable)
+  {
+    return false;
+  }
+
+  return millis() - lastServerSuccessAt <= SERVER_VERY_RECENT_WINDOW_MS;
 }
 
 unsigned long getLastServerSuccessAt()
@@ -77,6 +107,7 @@ void fetchConfig()
   Serial.println(url);
 
   http.begin(url);
+  prepareHttpClient(http);
   http.addHeader("X-DEVICE-KEY", getDeviceApiKey());
 
   int statusCode = http.GET();
@@ -143,6 +174,7 @@ void sendHeartbeat()
   Serial.println(body);
 
   http.begin(url);
+  prepareHttpClient(http);
   addDeviceHeaders(http);
 
   int statusCode = http.POST(body);
@@ -197,6 +229,7 @@ bool sendCommandAck(int commandId, const String &status, const String &message)
   Serial.println(body);
 
   http.begin(url);
+  prepareHttpClient(http);
   addDeviceHeaders(http);
 
   int statusCode = http.POST(body);
@@ -232,6 +265,7 @@ void pollCommands()
   Serial.println(url);
 
   http.begin(url);
+  prepareHttpClient(http);
   http.addHeader("X-DEVICE-KEY", getDeviceApiKey());
 
   int statusCode = http.GET();
@@ -310,6 +344,7 @@ bool sendDeviceStateSync(int lastCompletedCommandId)
   Serial.println(body);
 
   http.begin(url);
+  prepareHttpClient(http);
   addDeviceHeaders(http);
 
   int statusCode = http.POST(body);
@@ -387,6 +422,7 @@ bool sendSensorReading(const SensorReading &reading)
   Serial.println(body);
 
   http.begin(url);
+  prepareHttpClient(http);
   addDeviceHeaders(http);
 
   int statusCode = http.POST(body);
