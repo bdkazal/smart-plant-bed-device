@@ -44,6 +44,8 @@ Biztola Plant Buddy — Smart Plant Bed Controller
 - Periodic config refresh
 - Cached config stored in flash only when config changes
 - Server reachability tracking based on recent successful API requests
+- Non-blocking Wi-Fi reconnect while offline
+- Short HTTP timeouts so failed Laravel requests do not freeze local controls
 
 ### Backend communication
 
@@ -64,6 +66,7 @@ Biztola Plant Buddy — Smart Plant Bed Controller
 - Valve/pump output GPIO driver
 - Local physical manual watering button
 - Physical button can stop local, dashboard, auto, or scheduled watering
+- Manual stop is prioritized locally even when Laravel is unavailable
 - Watering status LED: OFF when idle, ON when watering
 
 ### Sensors
@@ -83,6 +86,7 @@ Biztola Plant Buddy — Smart Plant Bed Controller
 - NTP time sync when online
 - Local schedule fallback uses synced time
 - Offline local watering skips noisy state sync when Laravel is not recently reachable
+- Display wake button and manual watering button remain responsive while Laravel is offline
 
 ### OLED display
 
@@ -241,7 +245,7 @@ If idle:
   press button -> start local watering
 
 If watering:
-  press button -> stop watering
+  press button -> stop watering immediately
 ```
 
 The physical button can stop:
@@ -610,6 +614,60 @@ Config refresh updates RAM values and saves cached config only when the received
 
 ---
 
+## Offline Responsiveness Design
+
+A previous issue caused poor local response when Laravel or Wi-Fi was unavailable. The display wake button and manual watering button sometimes felt delayed because the main loop could be blocked by Wi-Fi reconnect attempts or long HTTP failures.
+
+Current fix:
+
+```text
+Wi-Fi reconnect in loop is non-blocking
+HTTP connect timeout is short
+HTTP response timeout is short
+server reachability window is shorter
+local controls are updated before/after network tasks
+manual local watering skips server sync when Laravel is not recently reachable
+```
+
+Current network timeout design:
+
+```cpp
+HTTP_CONNECT_TIMEOUT_MS = 1000
+HTTP_RESPONSE_TIMEOUT_MS = 1500
+SERVER_REACHABLE_WINDOW_MS = 15000
+SERVER_VERY_RECENT_WINDOW_MS = 5000
+```
+
+Expected behavior when Laravel is offline but Wi-Fi is connected:
+
+```text
+HTTP requests fail quickly with status -1
+cached Laravel config remains active
+sensor readings stay local for fallback automation
+manual watering button starts/stops watering quickly
+display wake button responds quickly
+state sync is skipped when Laravel is not recently reachable
+```
+
+Tested offline behavior from Serial Monitor:
+
+```text
+HTTP status: -1
+Laravel not reachable. Sensor reading kept local for fallback automation.
+Display wake button pressed.
+Manual watering button pressed.
+Starting local watering.
+VALVE: OPEN
+Device state sync skipped: Laravel is not recently reachable.
+Manual watering button pressed.
+Stopping watering from physical button.
+VALVE: CLOSED
+```
+
+This is the intended local-first behavior for V1: local safety/control must remain responsive even when the Laravel server is down.
+
+---
+
 ## Command Behavior
 
 ### valve_on
@@ -670,16 +728,16 @@ If watering was started by Laravel and the physical button is pressed:
 ```text
 1. ESP32 closes valve output
 2. Turns watering status LED OFF
-3. Sends executed ack for the active Laravel command
-4. Syncs final idle/closed state
+3. Sends executed ack for the active Laravel command if possible
+4. Syncs final idle/closed state if Laravel is reachable
 ```
 
 If watering was started locally by the button:
 
 ```text
-1. ESP32 closes valve output
+1. ESP32 closes valve output immediately
 2. Turns watering status LED OFF
-3. Syncs idle/closed state if Laravel is recently reachable
+3. Syncs idle/closed state only if Laravel is recently reachable
 4. No Laravel command ack is sent because there is no Laravel command ID
 ```
 
@@ -940,6 +998,7 @@ Important remaining risks before real hardware:
 3. Offline schedule after complete power loss still depends on time becoming available again; RTC support would improve this.
 4. DHT11 is acceptable for display but should not control watering.
 5. Sensor calibration should be re-tested after final wiring/enclosure because analog readings can shift.
+6. Any future network call must keep local controls responsive; avoid long blocking waits inside `loop()`.
 
 ---
 
@@ -960,6 +1019,7 @@ Manual dashboard watering
 Laravel auto watering from real soil moisture reading
 Offline local auto fallback
 Offline local schedule fallback
+Offline/local responsive manual control
 Physical button watering
 Physical button stop
 Valve LED/output
@@ -972,6 +1032,8 @@ Capacitive soil moisture sensor
 Soil sensor disconnected/null behavior
 DHT11 temperature/humidity display/readings
 NTP time sync
+Short HTTP timeout behavior when Laravel is down
+Non-blocking Wi-Fi reconnect in runtime loop
 ```
 
 Next planned:
