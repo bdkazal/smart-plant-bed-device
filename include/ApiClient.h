@@ -16,4 +16,5 @@ bool sendDeviceStateSync(int lastCompletedCommandId = 0);
 bool sendSensorReading(const SensorReading &reading);
 
 bool isServerRecentlyReachable();
+bool isServerVeryRecentlyReachable();
 unsigned long getLastServerSuccessAt();
