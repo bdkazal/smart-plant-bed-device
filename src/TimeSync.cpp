@@ -78,7 +78,7 @@ void applyTimezone(const String &timezoneName, int timezoneOffsetMinutes)
     Serial.println(activePosixTimezone);
 }
 
-bool parseLaravelLocalTimestamp(const String &timestamp, struct tm &timeInfo)
+bool parseBasicTimestamp(const String &timestamp, struct tm &timeInfo)
 {
     if (timestamp.length() < 19)
     {
@@ -117,6 +117,40 @@ bool parseLaravelLocalTimestamp(const String &timestamp, struct tm &timeInfo)
     timeInfo.tm_isdst = -1;
 
     return true;
+}
+
+bool parseLaravelLocalTimestamp(const String &timestamp, struct tm &timeInfo)
+{
+    return parseBasicTimestamp(timestamp, timeInfo);
+}
+
+bool parseLaravelUtcTimestamp(const String &timestamp, struct tm &timeInfo)
+{
+    return parseBasicTimestamp(timestamp, timeInfo);
+}
+
+void setSystemTimeFromEpoch(time_t epoch, const String &sourceLabel, const String &originalTimestamp)
+{
+    struct timeval tv;
+    tv.tv_sec = epoch;
+    tv.tv_usec = 0;
+
+    if (settimeofday(&tv, nullptr) != 0)
+    {
+        Serial.print(sourceLabel);
+        Serial.println(" time sync failed: settimeofday failed.");
+        return;
+    }
+
+    timeReady = true;
+    timeSourceText = sourceLabel;
+
+    Serial.print("System time synced from ");
+    Serial.print(sourceLabel);
+    Serial.print(": ");
+    Serial.println(originalTimestamp);
+
+    saveSystemTimeToRtc();
 }
 
 void beginTimeSync()
@@ -195,7 +229,7 @@ void syncTimeFromNtp(const String &timezoneName, int timezoneOffsetMinutes)
     saveSystemTimeToRtc();
 }
 
-bool syncTimeFromLaravelTimestamp(const String &timestamp)
+bool syncTimeFromLaravelUtcTimestamp(const String &timestamp)
 {
     if (timestamp.length() == 0)
     {
@@ -208,11 +242,46 @@ bool syncTimeFromLaravelTimestamp(const String &timestamp)
         return false;
     }
 
+    struct tm utcInfo;
+
+    if (!parseLaravelUtcTimestamp(timestamp, utcInfo))
+    {
+        Serial.print("Laravel UTC time sync skipped: invalid timestamp: ");
+        Serial.println(timestamp);
+        return false;
+    }
+
+    time_t utcEpoch = timegm(&utcInfo);
+
+    if (utcEpoch <= 0)
+    {
+        Serial.println("Laravel UTC time sync skipped: timegm failed.");
+        return false;
+    }
+
+    setSystemTimeFromEpoch(utcEpoch, "LARAVEL_UTC", timestamp);
+
+    return true;
+}
+
+bool syncTimeFromLaravelTimestamp(const String &timestamp)
+{
+    if (timestamp.length() == 0)
+    {
+        return false;
+    }
+
+    // NTP and Laravel UTC are stronger sources.
+    if (timeSourceText == "NTP" || timeSourceText == "LARAVEL_UTC")
+    {
+        return false;
+    }
+
     struct tm timeInfo;
 
     if (!parseLaravelLocalTimestamp(timestamp, timeInfo))
     {
-        Serial.print("Laravel time sync skipped: invalid timestamp: ");
+        Serial.print("Laravel local time sync skipped: invalid timestamp: ");
         Serial.println(timestamp);
         return false;
     }
@@ -221,27 +290,11 @@ bool syncTimeFromLaravelTimestamp(const String &timestamp)
 
     if (epoch <= 0)
     {
-        Serial.println("Laravel time sync skipped: mktime failed.");
+        Serial.println("Laravel local time sync skipped: mktime failed.");
         return false;
     }
 
-    struct timeval tv;
-    tv.tv_sec = epoch;
-    tv.tv_usec = 0;
-
-    if (settimeofday(&tv, nullptr) != 0)
-    {
-        Serial.println("Laravel time sync failed: settimeofday failed.");
-        return false;
-    }
-
-    timeReady = true;
-    timeSourceText = "LARAVEL";
-
-    Serial.print("System time synced from Laravel: ");
-    Serial.println(timestamp);
-
-    saveSystemTimeToRtc();
+    setSystemTimeFromEpoch(epoch, "LARAVEL_LOCAL", timestamp);
 
     return true;
 }
