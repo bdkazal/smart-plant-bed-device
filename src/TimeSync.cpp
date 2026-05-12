@@ -10,41 +10,72 @@
 static bool timeReady = false;
 static String activeTimezoneName = "Asia/Dhaka";
 static String timeSourceText = "NONE";
+static String activePosixTimezone = "UTC-6";
 
-const char *getPosixTimezoneForName(const String &timezoneName)
+String buildPosixTimezoneFromOffsetMinutes(int offsetMinutes)
 {
-    // POSIX TZ format note:
-    // Bangladesh is UTC+6, so POSIX uses BDT-6.
-    // The number looks reversed because POSIX stores the offset from local time to UTC.
+    // Laravel sends normal timezone offset minutes:
+    //   Asia/Dhaka UTC+6  =>  360
+    //   UTC               =>  0
+    //   America/New_York EST example => -300
+    //
+    // POSIX TZ signs are reversed:
+    //   UTC+6  => UTC-6
+    //   UTC-5  => UTC5
+    //
+    // This fixed-offset format follows the server-selected timezone offset.
+    // It does not encode future DST rule changes, but Laravel will refresh the
+    // offset in config when the device is online.
 
-    if (timezoneName == "Asia/Dhaka")
+    int totalMinutes = abs(offsetMinutes);
+    int hours = totalMinutes / 60;
+    int minutes = totalMinutes % 60;
+
+    String posix = "UTC";
+
+    if (offsetMinutes > 0)
     {
-        return "BDT-6";
+        posix += "-";
+    }
+    else if (offsetMinutes < 0)
+    {
+        posix += "+";
+    }
+    else
+    {
+        posix += "0";
+        return posix;
     }
 
-    if (timezoneName == "UTC" || timezoneName == "Etc/UTC")
+    posix += String(hours);
+
+    if (minutes > 0)
     {
-        return "UTC0";
+        posix += ":";
+        if (minutes < 10)
+        {
+            posix += "0";
+        }
+        posix += String(minutes);
     }
 
-    // V1 fallback.
-    // Your current Laravel device timezone is Asia/Dhaka.
-    // Add more mappings later if the product supports other countries.
-    return "BDT-6";
+    return posix;
 }
 
-void applyTimezone(const String &timezoneName)
+void applyTimezone(const String &timezoneName, int timezoneOffsetMinutes)
 {
     activeTimezoneName = timezoneName.length() > 0 ? timezoneName : "Asia/Dhaka";
-    const char *posixTimezone = getPosixTimezoneForName(activeTimezoneName);
+    activePosixTimezone = buildPosixTimezoneFromOffsetMinutes(timezoneOffsetMinutes);
 
-    setenv("TZ", posixTimezone, 1);
+    setenv("TZ", activePosixTimezone.c_str(), 1);
     tzset();
 
     Serial.print("Active timezone: ");
     Serial.println(activeTimezoneName);
+    Serial.print("Timezone offset minutes: ");
+    Serial.println(timezoneOffsetMinutes);
     Serial.print("POSIX timezone: ");
-    Serial.println(posixTimezone);
+    Serial.println(activePosixTimezone);
 }
 
 bool parseLaravelLocalTimestamp(const String &timestamp, struct tm &timeInfo)
@@ -93,7 +124,7 @@ void beginTimeSync()
     Serial.println();
     Serial.println("Time sync initialized.");
 
-    applyTimezone(activeTimezoneName);
+    applyTimezone(activeTimezoneName, 360);
     beginRtcClock();
 
     if (loadSystemTimeFromRtc())
@@ -110,7 +141,7 @@ void beginTimeSync()
     }
 }
 
-void syncTimeFromNtp(const String &timezoneName)
+void syncTimeFromNtp(const String &timezoneName, int timezoneOffsetMinutes)
 {
     if (!isWiFiConnected())
     {
@@ -126,8 +157,7 @@ void syncTimeFromNtp(const String &timezoneName)
         return;
     }
 
-    applyTimezone(timezoneName);
-    const char *posixTimezone = getPosixTimezoneForName(activeTimezoneName);
+    applyTimezone(timezoneName, timezoneOffsetMinutes);
 
     Serial.println();
     Serial.println("Syncing time from NTP...");
@@ -135,7 +165,7 @@ void syncTimeFromNtp(const String &timezoneName)
     Serial.println(activeTimezoneName);
 
     configTzTime(
-        posixTimezone,
+        activePosixTimezone.c_str(),
         "pool.ntp.org",
         "time.nist.gov"
     );
