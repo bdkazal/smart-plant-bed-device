@@ -2,8 +2,11 @@
 
 #include <Arduino.h>
 #include <RTClib.h>
+#include <Wire.h>
 #include <sys/time.h>
 #include <time.h>
+
+#include "PinConfig.h"
 
 RTC_DS1307 rtc;
 
@@ -22,6 +25,9 @@ void beginRtcClock()
 {
     Serial.println();
     Serial.println("Initializing DS1307 RTC...");
+
+    // OLED and DS1307 share the same I2C bus.
+    Wire.begin(OLED_I2C_SDA_PIN, OLED_I2C_SCL_PIN);
 
     rtcAvailable = rtc.begin();
 
