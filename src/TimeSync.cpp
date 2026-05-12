@@ -129,6 +129,35 @@ bool parseLaravelUtcTimestamp(const String &timestamp, struct tm &timeInfo)
     return parseBasicTimestamp(timestamp, timeInfo);
 }
 
+long daysFromCivil(int year, unsigned month, unsigned day)
+{
+    // Portable civil-date to days-since-1970 conversion.
+    // This avoids timegm(), which is not available in the current ESP32 toolchain.
+    year -= month <= 2;
+    const int era = (year >= 0 ? year : year - 399) / 400;
+    const unsigned yoe = static_cast<unsigned>(year - era * 400);
+    const unsigned doy = (153 * (month + (month > 2 ? -3 : 9)) + 2) / 5 + day - 1;
+    const unsigned doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+
+    return era * 146097L + static_cast<long>(doe) - 719468L;
+}
+
+time_t utcTmToEpoch(const struct tm &utcInfo)
+{
+    int year = utcInfo.tm_year + 1900;
+    unsigned month = utcInfo.tm_mon + 1;
+    unsigned day = utcInfo.tm_mday;
+
+    long days = daysFromCivil(year, month, day);
+
+    return static_cast<time_t>(
+        days * 86400L +
+        utcInfo.tm_hour * 3600L +
+        utcInfo.tm_min * 60L +
+        utcInfo.tm_sec
+    );
+}
+
 void setSystemTimeFromEpoch(time_t epoch, const String &sourceLabel, const String &originalTimestamp)
 {
     struct timeval tv;
@@ -251,11 +280,11 @@ bool syncTimeFromLaravelUtcTimestamp(const String &timestamp)
         return false;
     }
 
-    time_t utcEpoch = timegm(&utcInfo);
+    time_t utcEpoch = utcTmToEpoch(utcInfo);
 
     if (utcEpoch <= 0)
     {
-        Serial.println("Laravel UTC time sync skipped: timegm failed.");
+        Serial.println("Laravel UTC time sync skipped: UTC epoch conversion failed.");
         return false;
     }
 
