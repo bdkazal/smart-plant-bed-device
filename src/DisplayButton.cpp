@@ -32,7 +32,7 @@ void handleDisplayButtonPress()
     Serial.println("Display wake button pressed.");
 
     displayShowCriticalIfNeeded();
-    displayShowCurrentStatus(OLED_WAKE_BUTTON_SHOW_MS);
+    displayShowNextStatusPage(OLED_WAKE_BUTTON_SHOW_MS);
 }
 
 void updateDisplayButton()
@@ -58,7 +58,6 @@ void updateDisplayButton()
 
     stableDisplayButtonState = currentReading;
 
-    // Button pressed because we use INPUT_PULLUP.
     if (stableDisplayButtonState == LOW)
     {
         handleDisplayButtonPress();
