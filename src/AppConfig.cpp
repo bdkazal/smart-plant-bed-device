@@ -12,6 +12,8 @@ void printDeviceConfig()
     Serial.println(deviceConfig.deviceName);
     Serial.print("Timezone: ");
     Serial.println(deviceConfig.timezone);
+    Serial.print("Timezone offset minutes: ");
+    Serial.println(deviceConfig.timezoneOffsetMinutes);
     Serial.print("Watering mode: ");
     Serial.println(deviceConfig.wateringMode);
     Serial.print("Soil moisture threshold: ");
@@ -63,6 +65,7 @@ bool applyConfigObject(JsonObject config)
 
     deviceConfig.deviceName = config["device_name"] | "";
     deviceConfig.timezone = config["timezone"] | "";
+    deviceConfig.timezoneOffsetMinutes = config["timezone_offset_minutes"] | 360;
     deviceConfig.wateringMode = config["watering_mode"] | "";
     deviceConfig.soilMoistureThreshold = config["soil_moisture_threshold"] | 0;
     deviceConfig.maxWateringDurationSeconds = config["max_watering_duration_seconds"] | 0;
