@@ -14,13 +14,12 @@ static String timeSourceText = "NONE";
 const char *getPosixTimezoneForName(const String &timezoneName)
 {
     // POSIX TZ format note:
-    // For UTC+6, POSIX uses GMT-6.
-    // For UTC-5, POSIX uses EST5.
-    // This is confusing, but it is how the C time library expects it.
+    // Bangladesh is UTC+6, so POSIX uses BDT-6.
+    // The number looks reversed because POSIX stores the offset from local time to UTC.
 
     if (timezoneName == "Asia/Dhaka")
     {
-        return "GMT-6";
+        return "BDT-6";
     }
 
     if (timezoneName == "UTC" || timezoneName == "Etc/UTC")
@@ -31,7 +30,7 @@ const char *getPosixTimezoneForName(const String &timezoneName)
     // V1 fallback.
     // Your current Laravel device timezone is Asia/Dhaka.
     // Add more mappings later if the product supports other countries.
-    return "GMT-6";
+    return "BDT-6";
 }
 
 void applyTimezone(const String &timezoneName)
