@@ -110,7 +110,7 @@ void handleSensorReadingCycle()
 void runOnlineStartupTasks()
 {
   fetchConfig();
-  syncTimeFromNtp(deviceConfig.timezone);
+  syncTimeFromNtp(deviceConfig.timezone, deviceConfig.timezoneOffsetMinutes);
 
   sendHeartbeat();
   sendDeviceStateSync(0);
