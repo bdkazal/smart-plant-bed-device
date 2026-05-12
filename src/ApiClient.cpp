@@ -93,7 +93,7 @@ void addDeviceHeaders(HTTPClient &http)
 
 String extractJsonStringField(const String &response, const char *fieldName)
 {
-  StaticJsonDocument<1024> doc;
+  JsonDocument doc;
   DeserializationError error = deserializeJson(doc, response);
 
   if (error)
@@ -118,19 +118,34 @@ void syncTimeFromLaravelResponse(const String &response)
     return;
   }
 
-  String timestamp = extractJsonStringField(response, "server_time");
+  String utcTimestamp = extractJsonStringField(response, "server_time_utc");
 
-  if (timestamp.length() == 0)
+  if (utcTimestamp.length() > 0)
   {
-    timestamp = extractJsonStringField(response, "last_seen_at");
+    if (syncTimeFromLaravelUtcTimestamp(utcTimestamp))
+    {
+      return;
+    }
   }
 
-  if (timestamp.length() == 0)
+  String localTimestamp = extractJsonStringField(response, "server_time_local");
+
+  if (localTimestamp.length() == 0)
+  {
+    localTimestamp = extractJsonStringField(response, "server_time");
+  }
+
+  if (localTimestamp.length() == 0)
+  {
+    localTimestamp = extractJsonStringField(response, "last_seen_at");
+  }
+
+  if (localTimestamp.length() == 0)
   {
     return;
   }
 
-  syncTimeFromLaravelTimestamp(timestamp);
+  syncTimeFromLaravelTimestamp(localTimestamp);
 }
 
 void fetchConfig()
