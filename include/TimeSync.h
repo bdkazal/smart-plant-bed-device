@@ -3,7 +3,7 @@
 #include <Arduino.h>
 
 void beginTimeSync();
-void syncTimeFromNtp(const String &timezoneName);
+void syncTimeFromNtp(const String &timezoneName, int timezoneOffsetMinutes = 360);
 
 // Fallback time source when public NTP is unavailable but Laravel is reachable.
 // Expected format from Laravel: YYYY-MM-DD HH:MM:SS in the configured local timezone.
