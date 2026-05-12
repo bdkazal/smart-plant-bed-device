@@ -1,6 +1,7 @@
 #include "TimeSync.h"
 
 #include <Arduino.h>
+#include <sys/time.h>
 #include <time.h>
 
 #include "RtcClock.h"
@@ -47,6 +48,47 @@ void applyTimezone(const String &timezoneName)
     Serial.println(posixTimezone);
 }
 
+bool parseLaravelLocalTimestamp(const String &timestamp, struct tm &timeInfo)
+{
+    if (timestamp.length() < 19)
+    {
+        return false;
+    }
+
+    int year = timestamp.substring(0, 4).toInt();
+    int month = timestamp.substring(5, 7).toInt();
+    int day = timestamp.substring(8, 10).toInt();
+    int hour = timestamp.substring(11, 13).toInt();
+    int minute = timestamp.substring(14, 16).toInt();
+    int second = timestamp.substring(17, 19).toInt();
+
+    if (year < 2025 || year > 2099)
+    {
+        return false;
+    }
+
+    if (month < 1 || month > 12 || day < 1 || day > 31)
+    {
+        return false;
+    }
+
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59 || second < 0 || second > 59)
+    {
+        return false;
+    }
+
+    memset(&timeInfo, 0, sizeof(timeInfo));
+    timeInfo.tm_year = year - 1900;
+    timeInfo.tm_mon = month - 1;
+    timeInfo.tm_mday = day;
+    timeInfo.tm_hour = hour;
+    timeInfo.tm_min = minute;
+    timeInfo.tm_sec = second;
+    timeInfo.tm_isdst = -1;
+
+    return true;
+}
+
 void beginTimeSync()
 {
     Serial.println();
@@ -65,7 +107,7 @@ void beginTimeSync()
     {
         timeReady = false;
         timeSourceText = "NONE";
-        Serial.println("Time source: none. Waiting for NTP.");
+        Serial.println("Time source: none. Waiting for NTP or Laravel server time.");
     }
 }
 
@@ -103,7 +145,7 @@ void syncTimeFromNtp(const String &timezoneName)
 
     if (!getLocalTime(&timeInfo, 10000))
     {
-        Serial.println("Failed to get time from NTP.");
+        Serial.println("Failed to get time from NTP. Will use Laravel server time if available.");
 
         if (!timeReady && loadSystemTimeFromRtc())
         {
@@ -122,6 +164,57 @@ void syncTimeFromNtp(const String &timezoneName)
     Serial.println(&timeInfo, "%Y-%m-%d %H:%M:%S");
 
     saveSystemTimeToRtc();
+}
+
+bool syncTimeFromLaravelTimestamp(const String &timestamp)
+{
+    if (timestamp.length() == 0)
+    {
+        return false;
+    }
+
+    // NTP is the strongest source. Do not downgrade it with Laravel time.
+    if (timeSourceText == "NTP")
+    {
+        return false;
+    }
+
+    struct tm timeInfo;
+
+    if (!parseLaravelLocalTimestamp(timestamp, timeInfo))
+    {
+        Serial.print("Laravel time sync skipped: invalid timestamp: ");
+        Serial.println(timestamp);
+        return false;
+    }
+
+    time_t epoch = mktime(&timeInfo);
+
+    if (epoch <= 0)
+    {
+        Serial.println("Laravel time sync skipped: mktime failed.");
+        return false;
+    }
+
+    struct timeval tv;
+    tv.tv_sec = epoch;
+    tv.tv_usec = 0;
+
+    if (settimeofday(&tv, nullptr) != 0)
+    {
+        Serial.println("Laravel time sync failed: settimeofday failed.");
+        return false;
+    }
+
+    timeReady = true;
+    timeSourceText = "LARAVEL";
+
+    Serial.print("System time synced from Laravel: ");
+    Serial.println(timestamp);
+
+    saveSystemTimeToRtc();
+
+    return true;
 }
 
 bool isTimeReady()
