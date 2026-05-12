@@ -17,6 +17,7 @@ struct DeviceConfig
 {
   String deviceName;
   String timezone;
+  int timezoneOffsetMinutes = 360;
   String wateringMode;
   int soilMoistureThreshold = 0;
   int maxWateringDurationSeconds = 0;
