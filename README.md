@@ -15,6 +15,14 @@ The device connects to Laravel, sends heartbeat/state/readings, polls commands, 
 
 ---
 
+## Important Docs
+
+| File | Purpose |
+| --- | --- |
+| [`Docs/OFFLINE_TIME_AND_SCHEDULE.md`](Docs/OFFLINE_TIME_AND_SCHEDULE.md) | Confirmed RTC-backed offline schedule behavior after Laravel outage and device power loss. |
+
+---
+
 ## Product Name
 
 ```text
@@ -57,6 +65,7 @@ Biztola Plant Buddy — Smart Plant Bed Controller
 - Laravel manual watering
 - Laravel auto watering
 - Laravel schedule command support
+- Laravel UTC time sync from `server_time_utc`
 
 ### Watering control
 
@@ -84,7 +93,11 @@ Biztola Plant Buddy — Smart Plant Bed Controller
 - Offline local auto fallback
 - Offline local schedule fallback
 - NTP time sync when online
-- Local schedule fallback uses synced time
+- Laravel UTC time sync when Laravel is reachable
+- DS1307 RTC stores UTC backup time
+- Local schedule fallback uses device time from NTP, Laravel UTC, or RTC
+- Offline schedule fallback is confirmed working after Laravel server outage
+- Offline schedule fallback is confirmed working after ESP32 power loss/reboot when RTC time is valid
 - Offline local watering skips noisy state sync when Laravel is not recently reachable
 - Display wake button and manual watering button remain responsive while Laravel is offline
 
@@ -94,10 +107,13 @@ Biztola Plant Buddy — Smart Plant Bed Controller
 - Biztola monochrome 64x64 boot logo splash for 2.5 seconds
 - Boot status screen
 - Main status screen
+- Schedule/time status screen from display button
+- Display button cycles Main page and Schedule page
 - Watering active screen that stays awake during watering
 - Watering done screen
 - Critical dry-soil screen that stays awake
-- Display wake button wakes OLED for 30 seconds
+- Display wake button wakes OLED for 15 seconds
+- Display button can temporarily override the dry-soil warning page
 - Simple 1px square border around normal status screens
 
 ### Status LEDs
@@ -138,6 +154,21 @@ The device identifies itself using:
 }
 ```
 
+The config response should include UTC/local time fields:
+
+```json
+{
+  "server_time_utc": "2026-05-12T16:46:13+00:00",
+  "server_time_local": "2026-05-12 22:46:13",
+  "config": {
+    "timezone": "Asia/Dhaka",
+    "timezone_offset_minutes": 360
+  }
+}
+```
+
+The firmware prefers `server_time_utc` for time sync.
+
 ---
 
 ## Hardware Pin Map
@@ -153,8 +184,8 @@ Current ESP32 DevKit prototype pin map:
 | OLED wake/status button               | GPIO33       | Button connects GPIO33 to GND, uses `INPUT_PULLUP`        |
 | Capacitive soil moisture analog input | GPIO34       | ADC1 input-only pin                                       |
 | DHT11 data                            | GPIO32       | Temperature/humidity display/reading                      |
-| OLED SDA                              | GPIO21       | I2C SDA                                                   |
-| OLED SCL                              | GPIO22       | I2C SCL                                                   |
+| I2C SDA: OLED + RTC                   | GPIO21       | Shared I2C SDA                                            |
+| I2C SCL: OLED + RTC                   | GPIO22       | Shared I2C SCL                                            |
 | Wi-Fi reset button                    | GPIO0 / BOOT | Hold during startup to clear saved Wi-Fi                  |
 
 ---
@@ -274,12 +305,12 @@ pressed     = LOW
 Behavior:
 
 ```text
-Press button:
-  OLED wakes
-  shows current status
-  stays on for 30 seconds
-  sleeps again
+Press 1 -> OLED wakes and shows main status page
+Press 2 -> OLED shows schedule/time page
+Press 3 -> OLED shows main status page
 ```
+
+The OLED stays awake for 15 seconds after button press.
 
 ### Capacitive Soil Moisture Sensor
 
@@ -333,6 +364,25 @@ static const int OLED_I2C_ADDRESS = 0x3C;
 ```
 
 If your module scans as `0x3D`, update `include/PinConfig.h`.
+
+### DS1307 RTC
+
+The DS1307 uses the same I2C bus as the OLED:
+
+```text
+DS1307 GND -> ESP32 GND
+DS1307 SDA -> ESP32 GPIO21
+DS1307 SCL -> ESP32 GPIO22
+```
+
+Many DS1307 modules require 5V VCC. ESP32 GPIO is not 5V-tolerant, so final hardware should use a 3.3V-safe RTC module or proper I2C level shifting if the DS1307 module pulls SDA/SCL up to 5V.
+
+Firmware rule:
+
+```text
+DS1307 stores UTC backup time.
+Laravel timezone/offset controls local display and schedule interpretation.
+```
 
 ---
 
@@ -415,6 +465,24 @@ SOIL 42%            OK
 T 29C            H 61%
 ```
 
+### Schedule/time screen
+
+```text
+      Schedule
+ENABLED          YES
+TIME           23:10
+NEXT        Sun 00:06
+```
+
+If time is unavailable:
+
+```text
+      Schedule
+ENABLED          YES
+TIME        NOT SET
+NEXT             --
+```
+
 ### Watering screen
 
 ```text
@@ -446,7 +514,7 @@ LIMIT              15%
 SCHEDULE          IDLE
 ```
 
-This screen stays awake until moisture rises above the critical level.
+This screen stays awake until moisture rises above the critical level. The display button can temporarily override this page to show main/schedule information.
 
 ### Optional soil sensor behavior
 
@@ -472,7 +540,7 @@ On startup, the ESP32 does:
 5. Initialize manual watering button
 6. Initialize display wake button
 7. Initialize sensor reader
-8. Initialize time sync
+8. Initialize time sync and load RTC UTC time if valid
 9. Initialize local automation
 10. Initialize OLED display
 11. Show Biztola boot logo for 2.5 seconds
@@ -486,7 +554,8 @@ On startup, the ESP32 does:
     - connect to Wi-Fi
     - set Wi-Fi LED solid ON
     - fetch Laravel config
-    - sync NTP time
+    - sync Laravel UTC time and/or NTP time
+    - update RTC with UTC system time
     - send heartbeat
     - sync current state
     - poll commands
@@ -802,12 +871,21 @@ Runs locally when:
 ```text
 Laravel is not recently reachable
 watering_mode = schedule
-NTP/system time is ready
+device time is ready from NTP, Laravel UTC, or RTC
 cached schedules contain an enabled schedule for current day/time
 valve is not already watering
 ```
 
 The schedule fallback prevents repeated triggering of the same schedule within the same day/time key.
+
+Confirmed tests:
+
+```text
+server stopped while device stayed powered -> schedule triggered on time
+server stopped and device power-cycled -> RTC restored time and schedule triggered on time
+```
+
+See `Docs/OFFLINE_TIME_AND_SCHEDULE.md`.
 
 ---
 
@@ -827,6 +905,7 @@ include/
   LocalAutomation.h
   ManualButton.h
   PinConfig.h
+  RtcClock.h
   SensorReader.h
   SetupPortal.h
   StatusLed.h
@@ -846,9 +925,11 @@ src/
   DeviceStorage.cpp
   DisplayButton.cpp
   DisplayManager.cpp
+  DisplaySchedulePage.cpp
   FirmwareInfo.cpp
   LocalAutomation.cpp
   ManualButton.cpp
+  RtcClock.cpp
   SensorReader.cpp
   SetupPortal.cpp
   StatusLed.cpp
@@ -974,7 +1055,8 @@ AO3400 MOSFET controller acceptable for small/short-duty V1 loads
 DHT11 acceptable for display-only temp/humidity
 capacitive soil moisture sensor with 100k pulldown
 0.96 inch SSD1306 I2C OLED
-DS1307/DS3231 RTC optional later for better offline-after-power-loss timekeeping
+DS1307 RTC for current prototype offline-time backup
+DS3231 recommended later for better RTC accuracy and 3.3V-friendly hardware options
 ```
 
 ---
@@ -988,17 +1070,19 @@ Current firmware architecture is clean enough for V1:
 - sensor logic is isolated in `SensorReader.cpp`
 - watering runtime logic is isolated in `ValveController.cpp`
 - offline fallback logic is isolated in `LocalAutomation.cpp`
-- OLED behavior is isolated in `DisplayManager.cpp`
+- OLED behavior is isolated in `DisplayManager.cpp` and `DisplaySchedulePage.cpp`
+- RTC backup clock behavior is isolated in `RtcClock.cpp`
 - Wi-Fi credentials and cached config are stored using `Preferences`
 
 Important remaining risks before real hardware:
 
 1. ESP32-C3 migration needs a dedicated pin profile.
 2. Real pump/solenoid switching needs proper MOSFET, flyback diode, common ground, and power headroom.
-3. Offline schedule after complete power loss still depends on time becoming available again; RTC support would improve this.
+3. DS1307 modules commonly expect 5V; final hardware should use level shifting or a 3.3V-safe RTC module.
 4. DHT11 is acceptable for display but should not control watering.
 5. Sensor calibration should be re-tested after final wiring/enclosure because analog readings can shift.
 6. Any future network call must keep local controls responsive; avoid long blocking waits inside `loop()`.
+7. For global/DST-perfect scheduling later, Laravel should send precomputed `run_at_utc` schedule occurrences.
 
 ---
 
@@ -1019,6 +1103,8 @@ Manual dashboard watering
 Laravel auto watering from real soil moisture reading
 Offline local auto fallback
 Offline local schedule fallback
+Offline schedule after Laravel server outage
+Offline schedule after ESP32 power loss using DS1307 RTC
 Offline/local responsive manual control
 Physical button watering
 Physical button stop
@@ -1027,11 +1113,16 @@ Wi-Fi status LED
 Watering status LED
 Display wake button
 OLED boot logo
-OLED status/watering/done/critical screens
+OLED main status page
+OLED schedule/time page
+OLED watering/done/critical screens
+OLED button override for dry-soil warning page
 Capacitive soil moisture sensor
 Soil sensor disconnected/null behavior
 DHT11 temperature/humidity display/readings
 NTP time sync
+Laravel UTC time sync
+RTC UTC backup time
 Short HTTP timeout behavior when Laravel is down
 Non-blocking Wi-Fi reconnect in runtime loop
 ```
@@ -1041,8 +1132,8 @@ Next planned:
 ```text
 ESP32-C3 Zero / Super Mini pin profile
 real MOSFET/pump/solenoid hardware test
-optional RTC support for offline time after power loss
 production enclosure/wiring cleanup
 OTA firmware update
 production factory provisioning
+future precomputed UTC schedule occurrences from Laravel
 ```
