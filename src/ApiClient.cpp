@@ -1,5 +1,6 @@
 #include "ApiClient.h"
 
+#include <ArduinoJson.h>
 #include <HTTPClient.h>
 
 #include "DeviceIdentity.h"
@@ -9,6 +10,7 @@
 #include "ValveController.h"
 #include "FirmwareInfo.h"
 #include "DeviceStorage.h"
+#include "TimeSync.h"
 
 static const unsigned long SERVER_REACHABLE_WINDOW_MS = 15000;
 static const unsigned long SERVER_VERY_RECENT_WINDOW_MS = 5000;
@@ -89,6 +91,48 @@ void addDeviceHeaders(HTTPClient &http)
   http.addHeader("X-DEVICE-KEY", getDeviceApiKey());
 }
 
+String extractJsonStringField(const String &response, const char *fieldName)
+{
+  StaticJsonDocument<1024> doc;
+  DeserializationError error = deserializeJson(doc, response);
+
+  if (error)
+  {
+    return "";
+  }
+
+  const char *value = doc[fieldName];
+
+  if (value == nullptr)
+  {
+    return "";
+  }
+
+  return String(value);
+}
+
+void syncTimeFromLaravelResponse(const String &response)
+{
+  if (getTimeSourceText() == "NTP")
+  {
+    return;
+  }
+
+  String timestamp = extractJsonStringField(response, "server_time");
+
+  if (timestamp.length() == 0)
+  {
+    timestamp = extractJsonStringField(response, "last_seen_at");
+  }
+
+  if (timestamp.length() == 0)
+  {
+    return;
+  }
+
+  syncTimeFromLaravelTimestamp(timestamp);
+}
+
 void fetchConfig()
 {
   if (!isWiFiConnected())
@@ -120,6 +164,11 @@ void fetchConfig()
 
   Serial.print("Response: ");
   Serial.println(response);
+
+  if (statusCode >= 200 && statusCode < 300)
+  {
+    syncTimeFromLaravelResponse(response);
+  }
 
   if (statusCode == 200)
   {
@@ -188,6 +237,11 @@ void sendHeartbeat()
   Serial.print("Response: ");
   Serial.println(response);
 
+  if (statusCode >= 200 && statusCode < 300)
+  {
+    syncTimeFromLaravelResponse(response);
+  }
+
   http.end();
 }
 
@@ -242,6 +296,11 @@ bool sendCommandAck(int commandId, const String &status, const String &message)
   Serial.print("Response: ");
   Serial.println(response);
 
+  if (statusCode >= 200 && statusCode < 300)
+  {
+    syncTimeFromLaravelResponse(response);
+  }
+
   http.end();
 
   return statusCode >= 200 && statusCode < 300;
@@ -278,6 +337,11 @@ void pollCommands()
 
   Serial.print("Response: ");
   Serial.println(response);
+
+  if (statusCode >= 200 && statusCode < 300)
+  {
+    syncTimeFromLaravelResponse(response);
+  }
 
   if (statusCode == 200)
   {
@@ -357,6 +421,11 @@ bool sendDeviceStateSync(int lastCompletedCommandId)
   Serial.print("Response: ");
   Serial.println(response);
 
+  if (statusCode >= 200 && statusCode < 300)
+  {
+    syncTimeFromLaravelResponse(response);
+  }
+
   http.end();
 
   return statusCode >= 200 && statusCode < 300;
@@ -434,6 +503,11 @@ bool sendSensorReading(const SensorReading &reading)
   Serial.println(statusCode);
   Serial.print("Response: ");
   Serial.println(response);
+
+  if (statusCode >= 200 && statusCode < 300)
+  {
+    syncTimeFromLaravelResponse(response);
+  }
 
   http.end();
 
