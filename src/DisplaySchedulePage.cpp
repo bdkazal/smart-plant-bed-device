@@ -290,11 +290,7 @@ void displayShowScheduleStatus(unsigned long visibleMs)
 
 void displayShowNextStatusPage(unsigned long visibleMs)
 {
-    if (criticalDisplayActive)
-    {
-        displayShowCriticalIfNeeded();
-        return;
-    }
+    criticalDisplayActive = false;
 
     if (isWateringActive())
     {
