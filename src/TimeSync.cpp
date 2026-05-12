@@ -62,6 +62,22 @@ String buildPosixTimezoneFromOffsetMinutes(int offsetMinutes)
     return posix;
 }
 
+void printCurrentLocalTime(const String &label)
+{
+    struct tm localInfo;
+
+    if (!getLocalTime(&localInfo))
+    {
+        Serial.print(label);
+        Serial.println(" local time unavailable.");
+        return;
+    }
+
+    Serial.print(label);
+    Serial.print(" local time: ");
+    Serial.println(&localInfo, "%Y-%m-%d %H:%M:%S");
+}
+
 void applyTimezone(const String &timezoneName, int timezoneOffsetMinutes)
 {
     activeTimezoneName = timezoneName.length() > 0 ? timezoneName : "Asia/Dhaka";
@@ -178,6 +194,7 @@ void setSystemTimeFromEpoch(time_t epoch, const String &sourceLabel, const Strin
     Serial.print(sourceLabel);
     Serial.print(": ");
     Serial.println(originalTimestamp);
+    printCurrentLocalTime("System");
 
     saveSystemTimeToRtc();
 }
@@ -195,6 +212,7 @@ void beginTimeSync()
         timeReady = true;
         timeSourceText = "RTC";
         Serial.println("Time source: RTC backup.");
+        printCurrentLocalTime("RTC restored");
     }
     else
     {
@@ -215,6 +233,7 @@ void syncTimeFromNtp(const String &timezoneName, int timezoneOffsetMinutes)
             timeReady = true;
             timeSourceText = "RTC";
             Serial.println("Time source: RTC backup after failed NTP attempt.");
+            printCurrentLocalTime("RTC restored");
         }
 
         return;
@@ -244,6 +263,7 @@ void syncTimeFromNtp(const String &timezoneName, int timezoneOffsetMinutes)
             timeReady = true;
             timeSourceText = "RTC";
             Serial.println("Time source: RTC backup after NTP failure.");
+            printCurrentLocalTime("RTC restored");
         }
 
         return;
@@ -254,6 +274,7 @@ void syncTimeFromNtp(const String &timezoneName, int timezoneOffsetMinutes)
 
     Serial.print("NTP time synced: ");
     Serial.println(&timeInfo, "%Y-%m-%d %H:%M:%S");
+    printCurrentLocalTime("System");
 
     saveSystemTimeToRtc();
 }
