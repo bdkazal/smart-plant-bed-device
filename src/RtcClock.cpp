@@ -68,13 +68,13 @@ void beginRtcClock()
     if (!rtcTimeValid)
     {
         rtcStatusText = "RTC invalid";
-        Serial.print("DS1307 RTC time invalid: ");
+        Serial.print("DS1307 RTC UTC time invalid: ");
         printDateTime(now);
         return;
     }
 
     rtcStatusText = "RTC ready";
-    Serial.print("DS1307 RTC ready: ");
+    Serial.print("DS1307 RTC ready UTC: ");
     printDateTime(now);
 }
 
@@ -106,39 +106,21 @@ bool loadSystemTimeFromRtc()
         return false;
     }
 
-    // DS1307 stores local wall-clock time, not UTC epoch time.
-    // Convert that local wall-clock time through mktime(), which respects the active TZ.
-    struct tm localTime;
-    memset(&localTime, 0, sizeof(localTime));
-    localTime.tm_year = rtcNow.year() - 1900;
-    localTime.tm_mon = rtcNow.month() - 1;
-    localTime.tm_mday = rtcNow.day();
-    localTime.tm_hour = rtcNow.hour();
-    localTime.tm_min = rtcNow.minute();
-    localTime.tm_sec = rtcNow.second();
-    localTime.tm_isdst = -1;
-
-    time_t localEpoch = mktime(&localTime);
-
-    if (localEpoch <= 0)
-    {
-        Serial.println("RTC time load failed: mktime failed.");
-        return false;
-    }
-
+    // DS1307 stores UTC wall-clock time for stable offline backup.
+    // RTClib DateTime::unixtime() treats the stored value as UTC epoch.
     struct timeval tv;
-    tv.tv_sec = localEpoch;
+    tv.tv_sec = rtcNow.unixtime();
     tv.tv_usec = 0;
 
     if (settimeofday(&tv, nullptr) != 0)
     {
-        Serial.println("RTC time load failed: settimeofday failed.");
+        Serial.println("RTC UTC time load failed: settimeofday failed.");
         return false;
     }
 
-    rtcStatusText = "RTC time loaded";
+    rtcStatusText = "RTC UTC time loaded";
 
-    Serial.print("System time loaded from RTC local time: ");
+    Serial.print("System time loaded from RTC UTC: ");
     printDateTime(rtcNow);
 
     return true;
@@ -161,35 +143,35 @@ bool saveSystemTimeToRtc()
         return false;
     }
 
-    struct tm localTime;
+    struct tm utcTime;
 
-    if (!localtime_r(&nowEpoch, &localTime))
+    if (!gmtime_r(&nowEpoch, &utcTime))
     {
-        Serial.println("RTC update skipped: localtime conversion failed.");
+        Serial.println("RTC update skipped: UTC conversion failed.");
         return false;
     }
 
-    DateTime systemLocalNow(
-        localTime.tm_year + 1900,
-        localTime.tm_mon + 1,
-        localTime.tm_mday,
-        localTime.tm_hour,
-        localTime.tm_min,
-        localTime.tm_sec
+    DateTime systemUtcNow(
+        utcTime.tm_year + 1900,
+        utcTime.tm_mon + 1,
+        utcTime.tm_mday,
+        utcTime.tm_hour,
+        utcTime.tm_min,
+        utcTime.tm_sec
     );
 
-    if (!isReasonableRtcTime(systemLocalNow))
+    if (!isReasonableRtcTime(systemUtcNow))
     {
-        Serial.println("RTC update skipped: local system time is not reasonable.");
+        Serial.println("RTC update skipped: UTC system time is not reasonable.");
         return false;
     }
 
-    rtc.adjust(systemLocalNow);
+    rtc.adjust(systemUtcNow);
     rtcTimeValid = true;
-    rtcStatusText = "RTC synced from system time";
+    rtcStatusText = "RTC synced from UTC system time";
 
-    Serial.print("RTC updated from local system time: ");
-    printDateTime(systemLocalNow);
+    Serial.print("RTC updated from UTC system time: ");
+    printDateTime(systemUtcNow);
 
     return true;
 }
