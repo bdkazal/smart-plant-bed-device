@@ -3,10 +3,12 @@
 #include <Arduino.h>
 #include <time.h>
 
+#include "RtcClock.h"
 #include "WiFiMan.h"
 
 static bool timeReady = false;
 static String activeTimezoneName = "Asia/Dhaka";
+static String timeSourceText = "NONE";
 
 const char *getPosixTimezoneForName(const String &timezoneName)
 {
@@ -31,10 +33,40 @@ const char *getPosixTimezoneForName(const String &timezoneName)
     return "GMT-6";
 }
 
+void applyTimezone(const String &timezoneName)
+{
+    activeTimezoneName = timezoneName.length() > 0 ? timezoneName : "Asia/Dhaka";
+    const char *posixTimezone = getPosixTimezoneForName(activeTimezoneName);
+
+    setenv("TZ", posixTimezone, 1);
+    tzset();
+
+    Serial.print("Active timezone: ");
+    Serial.println(activeTimezoneName);
+    Serial.print("POSIX timezone: ");
+    Serial.println(posixTimezone);
+}
+
 void beginTimeSync()
 {
     Serial.println();
     Serial.println("Time sync initialized.");
+
+    applyTimezone(activeTimezoneName);
+    beginRtcClock();
+
+    if (loadSystemTimeFromRtc())
+    {
+        timeReady = true;
+        timeSourceText = "RTC";
+        Serial.println("Time source: RTC backup.");
+    }
+    else
+    {
+        timeReady = false;
+        timeSourceText = "NONE";
+        Serial.println("Time source: none. Waiting for NTP.");
+    }
 }
 
 void syncTimeFromNtp(const String &timezoneName)
@@ -42,19 +74,24 @@ void syncTimeFromNtp(const String &timezoneName)
     if (!isWiFiConnected())
     {
         Serial.println("Cannot sync time: Wi-Fi is not connected.");
-        timeReady = false;
+
+        if (!timeReady && loadSystemTimeFromRtc())
+        {
+            timeReady = true;
+            timeSourceText = "RTC";
+            Serial.println("Time source: RTC backup after failed NTP attempt.");
+        }
+
         return;
     }
 
-    activeTimezoneName = timezoneName.length() > 0 ? timezoneName : "Asia/Dhaka";
+    applyTimezone(timezoneName);
     const char *posixTimezone = getPosixTimezoneForName(activeTimezoneName);
 
     Serial.println();
     Serial.println("Syncing time from NTP...");
     Serial.print("Config timezone: ");
     Serial.println(activeTimezoneName);
-    Serial.print("POSIX timezone: ");
-    Serial.println(posixTimezone);
 
     configTzTime(
         posixTimezone,
@@ -67,19 +104,34 @@ void syncTimeFromNtp(const String &timezoneName)
     if (!getLocalTime(&timeInfo, 10000))
     {
         Serial.println("Failed to get time from NTP.");
-        timeReady = false;
+
+        if (!timeReady && loadSystemTimeFromRtc())
+        {
+            timeReady = true;
+            timeSourceText = "RTC";
+            Serial.println("Time source: RTC backup after NTP failure.");
+        }
+
         return;
     }
 
     timeReady = true;
+    timeSourceText = "NTP";
 
     Serial.print("NTP time synced: ");
     Serial.println(&timeInfo, "%Y-%m-%d %H:%M:%S");
+
+    saveSystemTimeToRtc();
 }
 
 bool isTimeReady()
 {
     return timeReady;
+}
+
+String getTimeSourceText()
+{
+    return timeSourceText;
 }
 
 int getCurrentDayOfWeekIso()
@@ -126,6 +178,21 @@ String getCurrentTimeString()
 
     char buffer[9];
     strftime(buffer, sizeof(buffer), "%H:%M:%S", &timeInfo);
+
+    return String(buffer);
+}
+
+String getCurrentHourMinuteString()
+{
+    struct tm timeInfo;
+
+    if (!getLocalTime(&timeInfo))
+    {
+        return "";
+    }
+
+    char buffer[6];
+    strftime(buffer, sizeof(buffer), "%H:%M", &timeInfo);
 
     return String(buffer);
 }
