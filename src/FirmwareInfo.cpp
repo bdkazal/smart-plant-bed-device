@@ -4,7 +4,12 @@
 
 static const char FIRMWARE_VERSION[] = "v0.1.0";
 static const char DEVICE_TYPE[] = "plant_bed_controller";
+
+#if defined(BOARD_ESP32_C3_SUPER_MINI)
+static const char HARDWARE_MODEL[] = "esp32-c3-super-mini";
+#else
 static const char HARDWARE_MODEL[] = "esp32-d0wd-v3-devkit";
+#endif
 
 String getFirmwareVersion()
 {
