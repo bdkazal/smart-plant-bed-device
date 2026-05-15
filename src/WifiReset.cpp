@@ -3,10 +3,12 @@
 #include <Arduino.h>
 
 #include "DeviceStorage.h"
+#include "PinConfig.h"
 
-// Most ESP32 dev boards use GPIO 0 as the BOOT button.
 // Button pressed = LOW.
-static const int WIFI_RESET_BUTTON_PIN = 0;
+// Pin is selected by board profile:
+// - ESP32 DevKit: GPIO0 / onboard BOOT button
+// - ESP32-C3 Super Mini: GPIO7 external button, because GPIO9 is used for I2C SCL
 static const unsigned long WIFI_RESET_HOLD_MS = 3000;
 
 void checkWifiResetOnBoot()
@@ -15,7 +17,9 @@ void checkWifiResetOnBoot()
 
     Serial.println();
     Serial.println("Checking Wi-Fi reset button...");
-    Serial.println("Hold BOOT button during startup to clear saved Wi-Fi.");
+    Serial.print("Wi-Fi reset GPIO: ");
+    Serial.println(WIFI_RESET_BUTTON_PIN);
+    Serial.println("Hold Wi-Fi reset button during startup to clear saved Wi-Fi.");
 
     if (digitalRead(WIFI_RESET_BUTTON_PIN) == HIGH)
     {
