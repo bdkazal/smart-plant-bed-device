@@ -30,6 +30,16 @@ static const bool WIFI_STATUS_LED_ACTIVE_LOW = false;
 static const int WATERING_STATUS_LED_PIN = -1;
 static const bool WATERING_STATUS_LED_ACTIVE_LOW = false;
 
+// External Wi-Fi reset button for C3.
+// Do not use the onboard BOOT/GPIO9 button because GPIO9 is used as I2C SCL.
+// Wiring:
+//   GPIO7 ---- button ---- GND
+//
+// Internal pull-up is used:
+//   not pressed = HIGH
+//   pressed     = LOW
+static const int WIFI_RESET_BUTTON_PIN = 7;
+
 // Soil moisture analog input.
 // Recalibrate after migration because ESP32-C3 ADC readings can differ
 // from the classic ESP32 DevKit readings.
@@ -56,7 +66,7 @@ static const int DHT_SENSOR_PIN = 2;
 //   GPIO9 = SCL
 //
 // GPIO9 can be boot-related on many ESP32-C3 boards, so test boot/reboot
-// carefully after connecting OLED and RTC.
+// carefully after connecting OLED and RTC. Do not use GPIO9 for Wi-Fi reset.
 static const int OLED_I2C_SDA_PIN = 8;
 static const int OLED_I2C_SCL_PIN = 9;
 static const int OLED_I2C_ADDRESS = 0x3C;
