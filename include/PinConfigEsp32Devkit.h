@@ -26,6 +26,10 @@ static const bool WIFI_STATUS_LED_ACTIVE_LOW = false;
 static const int WATERING_STATUS_LED_PIN = 14;
 static const bool WATERING_STATUS_LED_ACTIVE_LOW = false;
 
+// Classic ESP32 DevKit uses the onboard BOOT button / GPIO0 for Wi-Fi reset.
+// Hold during startup to clear saved Wi-Fi credentials.
+static const int WIFI_RESET_BUTTON_PIN = 0;
+
 // GPIO34 is input-only and belongs to ADC1.
 // ADC1 pins are preferred for analog sensors while Wi-Fi is active.
 static const int SOIL_MOISTURE_PIN = 34;
