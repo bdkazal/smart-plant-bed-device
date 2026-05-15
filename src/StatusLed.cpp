@@ -19,24 +19,49 @@ int ledOffLevel(bool activeLow)
     return activeLow ? HIGH : LOW;
 }
 
+bool isPinEnabled(int pin)
+{
+    return pin >= 0;
+}
+
+void safePinMode(int pin, uint8_t mode)
+{
+    if (!isPinEnabled(pin))
+    {
+        return;
+    }
+
+    pinMode(pin, mode);
+}
+
+void safeDigitalWrite(int pin, int value)
+{
+    if (!isPinEnabled(pin))
+    {
+        return;
+    }
+
+    digitalWrite(pin, value);
+}
+
 void writeWifiLed(bool on)
 {
-    digitalWrite(
+    safeDigitalWrite(
         WIFI_STATUS_LED_PIN,
         on ? ledOnLevel(WIFI_STATUS_LED_ACTIVE_LOW) : ledOffLevel(WIFI_STATUS_LED_ACTIVE_LOW));
 }
 
 void writeWateringLed(bool on)
 {
-    digitalWrite(
+    safeDigitalWrite(
         WATERING_STATUS_LED_PIN,
         on ? ledOnLevel(WATERING_STATUS_LED_ACTIVE_LOW) : ledOffLevel(WATERING_STATUS_LED_ACTIVE_LOW));
 }
 
 void beginStatusLed()
 {
-    pinMode(WIFI_STATUS_LED_PIN, OUTPUT);
-    pinMode(WATERING_STATUS_LED_PIN, OUTPUT);
+    safePinMode(WIFI_STATUS_LED_PIN, OUTPUT);
+    safePinMode(WATERING_STATUS_LED_PIN, OUTPUT);
 
     wifiLedBlinkState = false;
     lastWifiBlinkAt = 0;
@@ -47,11 +72,25 @@ void beginStatusLed()
     Serial.println();
     Serial.println("Status LEDs initialized.");
     Serial.print("Wi-Fi status LED GPIO: ");
-    Serial.println(WIFI_STATUS_LED_PIN);
+    if (isPinEnabled(WIFI_STATUS_LED_PIN))
+    {
+        Serial.println(WIFI_STATUS_LED_PIN);
+    }
+    else
+    {
+        Serial.println("disabled");
+    }
     Serial.print("Wi-Fi status LED active mode: ");
     Serial.println(WIFI_STATUS_LED_ACTIVE_LOW ? "ACTIVE LOW" : "ACTIVE HIGH");
     Serial.print("Watering status LED GPIO: ");
-    Serial.println(WATERING_STATUS_LED_PIN);
+    if (isPinEnabled(WATERING_STATUS_LED_PIN))
+    {
+        Serial.println(WATERING_STATUS_LED_PIN);
+    }
+    else
+    {
+        Serial.println("disabled - mirrors valve output physically");
+    }
     Serial.print("Watering status LED active mode: ");
     Serial.println(WATERING_STATUS_LED_ACTIVE_LOW ? "ACTIVE LOW" : "ACTIVE HIGH");
 }
