@@ -138,6 +138,13 @@ void runOnlineStartupTasks()
   lastScheduleCheckAt = now;
 }
 
+void startSetupPortalFallback()
+{
+  Serial.println("Starting setup portal fallback.");
+  displayShowBootStatus("WiFi setup", "Portal active", "Connect phone");
+  startSetupPortal();
+}
+
 void setup()
 {
   Serial.begin(115200);
@@ -173,9 +180,20 @@ void setup()
 
   if (!storedConfig.hasWifiCredentials)
   {
-    Serial.println("No Wi-Fi saved. Starting setup portal.");
-    displayShowBootStatus("WiFi setup", "Portal active", "Connect phone");
-    startSetupPortal();
+    Serial.println("No stored Wi-Fi credentials found. Trying development secrets before setup portal.");
+    displayShowBootStatus("Connecting WiFi", "Using dev config", "");
+    connectToWiFiUsingConfig(storedConfig);
+
+    if (isWiFiConnected())
+    {
+      setWifiStatusLedConnected();
+      displayShowBootStatus("WiFi connected", "Fetching config", "Syncing time");
+      runOnlineStartupTasks();
+      return;
+    }
+
+    Serial.println("Development Wi-Fi failed. Starting setup portal.");
+    startSetupPortalFallback();
     return;
   }
 
