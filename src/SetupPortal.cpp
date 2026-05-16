@@ -28,40 +28,7 @@ String jsonEscape(const String &value)
 String setupPageHtml()
 {
     return R"rawliteral(
-<!DOCTYPE html>
-<html>
-<head>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Smart Plant Bed Setup</title>
-  <style>
-    body{font-family:Arial,sans-serif;background:#f3f4f6;padding:20px}.card{max-width:440px;margin:30px auto;background:#fff;padding:24px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.08)}h1{font-size:22px;margin-bottom:8px}p{color:#555;line-height:1.4}label{display:block;margin-top:16px;font-weight:bold}select,input{width:100%;box-sizing:border-box;padding:12px;margin-top:6px;border:1px solid #ccc;border-radius:8px;font-size:16px}button{width:100%;margin-top:22px;padding:12px;background:#2563eb;color:white;border:0;border-radius:8px;font-size:16px;cursor:pointer}button:disabled{background:#9ca3af}.secondary{display:block;text-align:center;margin-top:14px;color:#2563eb;text-decoration:none;font-size:14px;cursor:pointer}.alert{padding:12px;border-radius:8px;margin-bottom:16px;font-size:14px;display:none}.error{background:#fee2e2;color:#991b1b}.success{background:#dcfce7;color:#166534}.info{background:#dbeafe;color:#1e40af}.small{font-size:13px;color:#666;margin-top:16px}
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h1>Smart Plant Bed Setup</h1>
-    <p>Select your home Wi-Fi and enter the password. The device will test the connection before saving.</p>
-    <div id="message" class="alert"></div>
-    <form id="wifi-form">
-      <label for="ssid">Wi-Fi Network</label>
-      <select id="ssid" name="ssid" required><option value="">Scanning Wi-Fi networks...</option></select>
-      <label for="password">Wi-Fi Password</label>
-      <input id="password" name="password" type="password">
-      <button id="submit-button" type="submit">Test, Save and Restart</button>
-    </form>
-    <a class="secondary" onclick="loadNetworks()">Refresh Wi-Fi List</a>
-    <p class="small">Setup hotspot: PlantBed-Setup<br>Setup password: plantbed123<br>Setup page: http://192.168.4.1</p>
-  </div>
-  <script>
-    const messageBox=document.getElementById('message'),ssidSelect=document.getElementById('ssid'),passwordInput=document.getElementById('password'),submitButton=document.getElementById('submit-button'),form=document.getElementById('wifi-form');
-    function showMessage(text,type){messageBox.textContent=text;messageBox.className='alert '+type;messageBox.style.display='block'}
-    function clearMessage(){messageBox.textContent='';messageBox.style.display='none'}
-    async function loadNetworks(){clearMessage();ssidSelect.innerHTML='<option value="">Scanning Wi-Fi networks...</option>';try{const response=await fetch('/networks');const data=await response.json();ssidSelect.innerHTML='';if(!data.networks||data.networks.length===0){ssidSelect.innerHTML='<option value="">No Wi-Fi networks found</option>';showMessage('No Wi-Fi networks found. Move closer to your router and refresh.','error');return}data.networks.forEach(network=>{const option=document.createElement('option');option.value=network.ssid;option.textContent=network.ssid+' ('+network.rssi+' dBm)';ssidSelect.appendChild(option)})}catch(error){ssidSelect.innerHTML='<option value="">Failed to scan Wi-Fi</option>';showMessage('Could not scan Wi-Fi networks. Refresh and try again.','error')}}
-    form.addEventListener('submit',async function(event){event.preventDefault();const ssid=ssidSelect.value,password=passwordInput.value;if(!ssid){showMessage('Please select a Wi-Fi network.','error');return}submitButton.disabled=true;showMessage('Testing Wi-Fi credentials. This may take up to 15 seconds...','info');const body=new URLSearchParams();body.append('ssid',ssid);body.append('password',password);try{const response=await fetch('/save',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body.toString()});const data=await response.json();if(!data.ok){showMessage(data.message||'Could not connect. Check the password and try again.','error');submitButton.disabled=false;return}showMessage('Wi-Fi saved successfully. Device is restarting. The setup hotspot will disappear.','success');submitButton.disabled=true}catch(error){showMessage('Connection test failed. Try again.','error');submitButton.disabled=false}});
-    loadNetworks();
-  </script>
-</body>
-</html>
+<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>Smart Plant Bed Setup</title><style>body{font-family:Arial,sans-serif;background:#f3f4f6;padding:20px}.card{max-width:440px;margin:30px auto;background:#fff;padding:24px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.08)}h1{font-size:22px;margin-bottom:8px}p{color:#555;line-height:1.4}label{display:block;margin-top:16px;font-weight:bold}select,input{width:100%;box-sizing:border-box;padding:12px;margin-top:6px;border:1px solid #ccc;border-radius:8px;font-size:16px}button{width:100%;margin-top:22px;padding:12px;background:#2563eb;color:white;border:0;border-radius:8px;font-size:16px;cursor:pointer}button:disabled{background:#9ca3af}.secondary{display:block;text-align:center;margin-top:14px;color:#2563eb;text-decoration:none;font-size:14px;cursor:pointer}.alert{padding:12px;border-radius:8px;margin-bottom:16px;font-size:14px;display:none}.error{background:#fee2e2;color:#991b1b}.success{background:#dcfce7;color:#166534}.info{background:#dbeafe;color:#1e40af}.small{font-size:13px;color:#666;margin-top:16px}.hint{font-size:13px;color:#666;margin-top:6px}</style></head><body><div class="card"><h1>Smart Plant Bed Setup</h1><p>Select your home Wi-Fi or type the SSID manually, then enter the password.</p><div id="message" class="alert"></div><form id="wifi-form"><label for="ssid">Wi-Fi Network</label><select id="ssid" name="ssid"><option value="">Scanning Wi-Fi networks...</option></select><label for="manual_ssid">Manual SSID fallback</label><input id="manual_ssid" name="manual_ssid" type="text" placeholder="Type SSID if scan fails"><p class="hint">Use manual SSID if the network list is empty or unstable.</p><label for="password">Wi-Fi Password</label><input id="password" name="password" type="password"><button id="submit-button" type="submit">Test, Save and Restart</button></form><a class="secondary" onclick="loadNetworks()">Refresh Wi-Fi List</a><p class="small">Setup hotspot: PlantBed-Setup<br>Setup password: plantbed123<br>Setup page: http://192.168.4.1</p></div><script>const messageBox=document.getElementById('message'),ssidSelect=document.getElementById('ssid'),manualSsidInput=document.getElementById('manual_ssid'),passwordInput=document.getElementById('password'),submitButton=document.getElementById('submit-button'),form=document.getElementById('wifi-form');function showMessage(text,type){messageBox.textContent=text;messageBox.className='alert '+type;messageBox.style.display='block'}function clearMessage(){messageBox.textContent='';messageBox.style.display='none'}async function loadNetworks(){clearMessage();ssidSelect.innerHTML='<option value="">Scanning Wi-Fi networks...</option>';try{const response=await fetch('/networks');const data=await response.json();ssidSelect.innerHTML='<option value="">Use manual SSID or select scanned network</option>';if(!data.networks||data.networks.length===0){showMessage('No Wi-Fi networks found. You can type the SSID manually below.','info');return}data.networks.forEach(network=>{const option=document.createElement('option');option.value=network.ssid;option.textContent=network.ssid+' ('+network.rssi+' dBm)';ssidSelect.appendChild(option)})}catch(error){ssidSelect.innerHTML='<option value="">Use manual SSID</option>';showMessage('Scan failed. Type the SSID manually below.','info')}}form.addEventListener('submit',async function(event){event.preventDefault();const manualSsid=manualSsidInput.value.trim();const ssid=manualSsid.length?manualSsid:ssidSelect.value;const password=passwordInput.value;if(!ssid){showMessage('Select a Wi-Fi network or type the SSID manually.','error');return}submitButton.disabled=true;showMessage('Testing Wi-Fi credentials. This may take up to 15 seconds...','info');const body=new URLSearchParams();body.append('ssid',ssid);body.append('password',password);try{const response=await fetch('/save',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body.toString()});const data=await response.json();if(!data.ok){showMessage(data.message||'Could not connect. Check the SSID/password and try again.','error');submitButton.disabled=false;return}showMessage('Wi-Fi saved successfully. Device is restarting.','success');submitButton.disabled=true}catch(error){showMessage('Connection test failed. Try again.','error');submitButton.disabled=false}});loadNetworks();</script></body></html>
 )rawliteral";
 }
 
@@ -82,32 +49,40 @@ void handleNetworks()
 
     WiFi.mode(WIFI_AP_STA);
     applySetupWifiPower();
+    WiFi.scanDelete();
+    delay(100);
 
-    int networkCount = WiFi.scanNetworks();
+    int networkCount = WiFi.scanNetworks(false, true);
+    Serial.print("Wi-Fi scan result count: ");
+    Serial.println(networkCount);
+
     String json = "{\"networks\":[";
     bool first = true;
 
-    for (int i = 0; i < networkCount; i++)
+    if (networkCount > 0)
     {
-        String ssid = WiFi.SSID(i);
-        int rssi = WiFi.RSSI(i);
-
-        if (ssid.length() == 0)
+        for (int i = 0; i < networkCount; i++)
         {
-            continue;
-        }
+            String ssid = WiFi.SSID(i);
+            int rssi = WiFi.RSSI(i);
 
-        if (!first)
-        {
-            json += ",";
-        }
+            if (ssid.length() == 0)
+            {
+                continue;
+            }
 
-        json += "{\"ssid\":\"";
-        json += jsonEscape(ssid);
-        json += "\",\"rssi\":";
-        json += String(rssi);
-        json += "}";
-        first = false;
+            if (!first)
+            {
+                json += ",";
+            }
+
+            json += "{\"ssid\":\"";
+            json += jsonEscape(ssid);
+            json += "\",\"rssi\":";
+            json += String(rssi);
+            json += "}";
+            first = false;
+        }
     }
 
     json += "]}";
@@ -161,13 +136,13 @@ void handleSave()
 
     if (ssid.length() == 0)
     {
-        setupServer.send(400, "application/json", "{\"ok\":false,\"message\":\"Please select a Wi-Fi network.\"}");
+        setupServer.send(400, "application/json", "{\"ok\":false,\"message\":\"Please select or type a Wi-Fi SSID.\"}");
         return;
     }
 
     if (!testWiFiCredentials(ssid, password))
     {
-        setupServer.send(200, "application/json", "{\"ok\":false,\"message\":\"Could not connect to that Wi-Fi. Check the password and try again.\"}");
+        setupServer.send(200, "application/json", "{\"ok\":false,\"message\":\"Could not connect to that Wi-Fi. Check the SSID/password and try again.\"}");
         return;
     }
 
