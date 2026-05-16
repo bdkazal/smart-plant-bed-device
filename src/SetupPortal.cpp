@@ -8,6 +8,9 @@
 
 static const char *SETUP_AP_SSID = "PlantBed-Setup";
 static const char *SETUP_AP_PASSWORD = "plantbed123";
+static const int SETUP_AP_CHANNEL = 6;
+static const int SETUP_AP_MAX_CONNECTIONS = 4;
+static const bool SETUP_AP_HIDDEN = false;
 
 WebServer setupServer(80);
 bool setupPortalActive = false;
@@ -398,17 +401,52 @@ void startSetupPortal()
     Serial.println();
     Serial.println("Starting setup portal...");
 
-    WiFi.mode(WIFI_AP_STA);
-    WiFi.softAP(SETUP_AP_SSID, SETUP_AP_PASSWORD);
+    // Start from a clean radio state. This is more reliable on ESP32-C3 native USB
+    // boards after repeated station connection attempts and resets.
+    WiFi.persistent(false);
+    WiFi.disconnect(true, true);
+    WiFi.softAPdisconnect(true);
+    delay(250);
+    WiFi.mode(WIFI_OFF);
+    delay(250);
+    WiFi.mode(WIFI_AP);
+    delay(100);
+
+    WiFi.setTxPower(WIFI_POWER_19_5dBm);
+
+    bool apStarted = WiFi.softAP(
+        SETUP_AP_SSID,
+        SETUP_AP_PASSWORD,
+        SETUP_AP_CHANNEL,
+        SETUP_AP_HIDDEN,
+        SETUP_AP_MAX_CONNECTIONS
+    );
+
+    delay(200);
 
     IPAddress ip = WiFi.softAPIP();
 
+    Serial.print("Setup hotspot started: ");
+    Serial.println(apStarted ? "yes" : "no");
     Serial.print("Setup hotspot SSID: ");
     Serial.println(SETUP_AP_SSID);
     Serial.print("Setup hotspot password: ");
     Serial.println(SETUP_AP_PASSWORD);
+    Serial.print("Setup hotspot channel: ");
+    Serial.println(SETUP_AP_CHANNEL);
+    Serial.print("Setup AP MAC: ");
+    Serial.println(WiFi.softAPmacAddress());
+    Serial.print("Setup AP station count: ");
+    Serial.println(WiFi.softAPgetStationNum());
     Serial.print("Setup portal URL: http://");
     Serial.println(ip);
+
+    if (!apStarted)
+    {
+        Serial.println("Setup portal failed: softAP did not start.");
+        setupPortalActive = false;
+        return;
+    }
 
     setupServer.on("/", HTTP_GET, handleRoot);
     setupServer.on("/networks", HTTP_GET, handleNetworks);
