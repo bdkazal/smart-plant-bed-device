@@ -6,8 +6,10 @@
 #include "secrets.h"
 #include "DeviceStorage.h"
 
-static const unsigned long WIFI_RECONNECT_INTERVAL_MS = 15000;
+static const unsigned long WIFI_RECONNECT_INTERVAL_MS = 10000;
 static const unsigned long WIFI_RECONNECT_STATUS_MS = 5000;
+static const unsigned long WIFI_CONNECT_TIMEOUT_MS = 15000;
+static const unsigned long WIFI_CONNECT_DOT_INTERVAL_MS = 500;
 
 unsigned long lastReconnectAttemptAt = 0;
 unsigned long lastReconnectStatusAt = 0;
@@ -27,6 +29,12 @@ void printWiFiConnectedInfo()
     Serial.println(WiFi.RSSI());
 }
 
+void prepareStationRadio()
+{
+    WiFi.mode(WIFI_STA);
+    WiFi.setTxPower(WIFI_POWER_8_5dBm);
+}
+
 bool connectWithCredentials(const String &ssid, const String &password)
 {
     if (ssid.length() == 0)
@@ -40,16 +48,15 @@ bool connectWithCredentials(const String &ssid, const String &password)
     Serial.print("SSID: ");
     Serial.println(ssid);
 
-    WiFi.mode(WIFI_STA);
+    prepareStationRadio();
     WiFi.begin(ssid.c_str(), password.c_str());
 
-    int attempts = 0;
+    unsigned long startedAt = millis();
 
-    while (!isWiFiConnected() && attempts < 30)
+    while (!isWiFiConnected() && millis() - startedAt < WIFI_CONNECT_TIMEOUT_MS)
     {
-        delay(500);
+        delay(WIFI_CONNECT_DOT_INTERVAL_MS);
         Serial.print(".");
-        attempts++;
     }
 
     Serial.println();
@@ -61,7 +68,7 @@ bool connectWithCredentials(const String &ssid, const String &password)
         return true;
     }
 
-    Serial.println("Wi-Fi connection failed.");
+    Serial.println("Wi-Fi connection failed. Device will retry later.");
     reconnectInProgress = false;
     return false;
 }
@@ -121,9 +128,7 @@ void startNonBlockingReconnect()
     Serial.print("SSID: ");
     Serial.println(ssid);
 
-    WiFi.mode(WIFI_STA);
-    WiFi.disconnect(false, false);
-    delay(10);
+    prepareStationRadio();
     WiFi.begin(ssid.c_str(), password.c_str());
 
     reconnectInProgress = true;
