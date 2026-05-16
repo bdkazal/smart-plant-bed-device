@@ -32,11 +32,20 @@ const unsigned long OFFLINE_HEARTBEAT_INTERVAL_MS = 30000;
 const unsigned long OFFLINE_COMMAND_POLL_INTERVAL_MS = 30000;
 const unsigned long OFFLINE_CONFIG_REFRESH_INTERVAL_MS = 120000;
 
+// ESP32-C3 is single-core. A tight loop can heat the chip and make Wi-Fi
+// less stable, so every loop pass should yield briefly to background tasks.
+const unsigned long MAIN_LOOP_IDLE_DELAY_MS = 5;
+
 unsigned long lastHeartbeatAt = 0;
 unsigned long lastCommandPollAt = 0;
 unsigned long lastReadingAt = 0;
 unsigned long lastConfigRefreshAt = 0;
 unsigned long lastScheduleCheckAt = 0;
+
+void idleCpuBriefly()
+{
+  delay(MAIN_LOOP_IDLE_DELAY_MS);
+}
 
 void updateLocalControls()
 {
@@ -192,6 +201,7 @@ void loop()
     updateWifiStatusLedDisconnected();
     handleSetupPortal();
     updateLocalControls();
+    idleCpuBriefly();
     return;
   }
 
@@ -262,4 +272,5 @@ void loop()
   }
 
   updateLocalControls();
+  idleCpuBriefly();
 }
